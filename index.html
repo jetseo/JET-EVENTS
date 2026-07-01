@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대강당 추첨 게임</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+<style>
+  :root{
+    --bg-stage:#0A0C10;
+    --bg-panel:#14171F;
+    --bg-panel-alt:#1C202B;
+    --line: #262b38;
+    --accent-pink:#FF2E63;
+    --accent-gold:#FFC53D;
+    --accent-teal:#2DD4BF;
+    --text-main:#F4F1EA;
+    --text-dim:#8A8F9C;
+  }
+  .modal{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:100;
+    align-items:center; justify-content:center;
+  }
+  .modal.open{ display:flex; }
+  .modal-content{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:16px;
+    padding:24px; max-width:450px; width:90%;
+  }
+  .modal h2{ margin:0 0 16px; font-family:'Black Han Sans', sans-serif; }
+  .modal input[type=text], .modal input[type=password]{
+    width:100%; background:var(--bg-panel-alt); border:1px solid var(--line); color:var(--text-main);
+    border-radius:8px; padding:10px; font-size:14px; margin-bottom:12px;
+  }
+  .modal-buttons{ display:flex; gap:8px; }
+  .modal button{ flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+  .modal .btn-primary{ background:var(--accent-teal); color:#04211d; }
+  .modal .btn-cancel{ background:var(--bg-panel-alt); color:var(--text-main); border:1px solid var(--line); }
+  .status-bar{
+    position:fixed; bottom:0; left:0; right:0; height:50px; background:var(--bg-panel);
+    border-top:1px solid var(--line); display:flex; align-items:center; padding:0 20px;
+    gap:12px; font-size:13px; z-index:99;
+  }
+  .status-dot{ width:8px; height:8px; border-radius:50%; }
+  .status-dot.connected{ background:var(--accent-teal); }
+  .status-dot.error{ background:var(--accent-pink); }
+  .status-dot.offline{ background:var(--text-dim); }
+  .github-btn{
+    margin-left:auto; background:var(--accent-gold); color:#04211d; border:none; padding:6px 12px;
+    border-radius:6px; cursor:pointer; font-weight:700; font-size:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-stage);
+    color:var(--text-main);
+    font-family:'Pretendard Variable','Noto Sans KR',sans-serif;
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  /* signature: rotating spotlight sweep */
+  .spotlight{
+    position:fixed; inset:-20% -20% -20% -20%;
+    background: conic-gradient(from 0deg at 50% 30%,
+      rgba(255,46,99,0.10) 0deg, rgba(255,46,99,0) 40deg,
+      rgba(45,212,191,0.10) 140deg, rgba(45,212,191,0) 180deg,
+      rgba(255,197,61,0.08) 260deg, rgba(255,197,61,0) 300deg,
+      rgba(255,46,99,0.10) 360deg);
+    animation: sweep 22s linear infinite;
+    pointer-events:none; z-index:0;
+    filter: blur(40px);
+  }
+  @keyframes sweep{ to{ transform: rotate(360deg);} }
+  @media (prefers-reduced-motion: reduce){ .spotlight{animation:none;} }
+
+  header{
+    position:relative; z-index:1;
+    padding:28px 20px 16px;
+    text-align:center;
+  }
+  header h1{
+    font-family:'Black Han Sans', sans-serif;
+    font-size:clamp(28px, 6vw, 44px);
+    letter-spacing:1px;
+    margin:0 0 4px;
+    background: linear-gradient(90deg, var(--accent-gold), var(--accent-pink));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  header p{ color:var(--text-dim); margin:0; font-size:14px; }
+
+  .tabs{
+    position:relative; z-index:1;
+    display:flex; justify-content:center; gap:8px;
+    padding:0 12px 20px; flex-wrap:wrap;
+  }
+  .tab-btn{
+    font-family:'Pretendard Variable', sans-serif;
+    font-weight:700; font-size:14px;
+    background:var(--bg-panel); color:var(--text-dim);
+    border:1px solid var(--line); border-radius:999px;
+    padding:10px 18px; cursor:pointer; transition:.2s;
+  }
+  .tab-btn.active{
+    background:var(--accent-teal); color:#04211d; border-color:var(--accent-teal);
+  }
+  .tab-btn:focus-visible, button:focus-visible, input:focus-visible{
+    outline:2px solid var(--accent-gold); outline-offset:2px;
+  }
+
+  .layout{
+    position:relative; z-index:1;
+    max-width:1100px; margin:0 auto; padding:0 16px 60px;
+    display:grid; grid-template-columns: 260px 1fr; gap:16px;
+  }
+  @media (max-width:760px){ .layout{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--line);
+    border-radius:16px; padding:16px;
+  }
+  .panel h2{ font-size:14px; margin:0 0 12px; color:var(--text-dim); font-weight:700; letter-spacing:.3px;}
+
+  /* participant panel */
+  .add-row{ display:flex; gap:6px; margin-bottom:8px; }
+  .add-row input[type=text]{
+    flex:1; background:var(--bg-panel-alt); border:1px solid var(--line);
+    color:var(--text-main); border-radius:8px; padding:9px 10px; font-size:14px;
+  }
+  .add-row button, .ghost-btn{
+    background:var(--accent-teal); color:#04211d; border:none; border-radius:8px;
+    padding:9px 12px; font-weight:700; cursor:pointer; font-size:13px;
+  }
+  .ghost-btn{ background:transparent; border:1px solid var(--line); color:var(--text-dim); width:100%; margin-top:6px;}
+  textarea#bulkAdd{
+    width:100%; min-height:60px; background:var(--bg-panel-alt); border:1px solid var(--line);
+    color:var(--text-main); border-radius:8px; padding:8px; font-size:13px; resize:vertical; margin-top:8px;
+  }
+  ul#participantList{ list-style:none; margin:12px 0 0; padding:0; max-height:320px; overflow-y:auto;}
+  ul#participantList li{
+    display:flex; align-items:center; gap:8px; padding:6px 4px;
+    border-bottom:1px solid var(--line); font-size:13px;
+  }
+  .avatar{
+    width:28px; height:28px; border-radius:50%; background:var(--bg-panel-alt);
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-dim);
+    background-size:cover; background-position:center; flex-shrink:0; cursor:pointer; border:1px solid var(--line);
+    overflow:hidden;
+  }
+  li .pname{ flex:1; }
+  li .rm{ background:none; border:none; color:var(--accent-pink); cursor:pointer; font-size:15px;}
+  .count-badge{ color:var(--text-dim); font-size:12px; margin-top:8px; display:block; }
+
+  /* stage area */
+  .stage{ background:var(--bg-panel); border:1px solid var(--line); border-radius:16px; padding:20px; min-height:520px; }
+  .stage h2{ font-family:'Black Han Sans', sans-serif; font-size:20px; margin:0 0 16px; letter-spacing:.5px;}
+  .empty-state{ color:var(--text-dim); text-align:center; padding:60px 20px; font-size:14px; }
+
+  /* roulette */
+  #rouletteWrap{ display:flex; flex-direction:column; align-items:center; gap:16px;}
+  .wheel-holder{ position:relative; width:min(360px, 80vw); height:min(360px,80vw); }
+  #wheelCanvas{ width:100%; height:100%; border-radius:50%; transition: transform 4.5s cubic-bezier(.15,.85,.25,1); box-shadow:0 0 0 6px var(--bg-panel-alt), 0 0 40px rgba(255,46,99,.25); }
+  .pointer{ position:absolute; top:-4px; left:50%; transform:translateX(-50%); width:0; height:0;
+    border-left:14px solid transparent; border-right:14px solid transparent; border-top:22px solid var(--accent-gold); z-index:2; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  .spin-btn{
+    font-family:'Black Han Sans', sans-serif; font-size:18px; letter-spacing:1px;
+    background:linear-gradient(90deg,var(--accent-pink),#ff5c7a); color:#fff; border:none;
+    border-radius:999px; padding:14px 40px; cursor:pointer; box-shadow:0 6px 20px rgba(255,46,99,.35);
+  }
+  .spin-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .result-banner{
+    font-family:'Black Han Sans', sans-serif; font-size:26px; text-align:center; min-height:36px;
+    color:var(--accent-gold);
+  }
+  label.opt{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-dim);}
+
+  /* ladder */
+  #ladderWrap{ display:flex; flex-direction:column; align-items:center; gap:14px;}
+  #ladderSvgHolder{ overflow-x:auto; width:100%; }
+  .ladder-top-row, .ladder-bottom-row{ display:flex; }
+  .ladder-col-label{
+    flex:1; text-align:center; font-size:12px; padding:6px 2px; min-width:60px;
+  }
+  .ladder-start-btn{
+    background:var(--bg-panel-alt); border:1px solid var(--line); color:var(--text-main);
+    border-radius:8px; padding:6px 4px; font-size:12px; cursor:pointer; width:90%;
+  }
+  .ladder-start-btn:hover{ border-color:var(--accent-teal); }
+  .ladder-result-box{
+    background:var(--bg-panel-alt); border:1px solid var(--line); border-radius:8px; padding:6px 2px;
+    font-size:12px; text-align:center; width:90%; margin:0 auto;
+  }
+  .ladder-result-box.hit{ border-color:var(--accent-gold); color:var(--accent-gold); font-weight:700;}
+  textarea#ladderCustomResults{
+    width:100%; min-height:50px; background:var(--bg-panel-alt); border:1px solid var(--line);
+    color:var(--text-main); border-radius:8px; padding:8px; font-size:12px; margin-top:6px;
+  }
+
+  /* survival */
+  #survivalWrap{ display:flex; flex-direction:column; gap:16px; }
+  .survival-controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .survival-controls input[type=number]{
+    width:70px; background:var(--bg-panel-alt); border:1px solid var(--line); color:var(--text-main);
+    border-radius:8px; padding:8px; font-size:13px;
+  }
+  .survival-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px;
+  }
+  .s-card{
+    background:var(--bg-panel-alt); border:1px solid var(--line); border-radius:12px;
+    padding:10px 6px; text-align:center; transition:.25s;
+  }
+  .s-card .s-avatar{
+    width:48px; height:48px; border-radius:50%; margin:0 auto 6px; background:#2a2f3d;
+    background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:var(--text-dim); border:2px solid var(--line);
+  }
+  .s-card.picked .s-avatar{ border-color:var(--accent-pink); box-shadow:0 0 14px rgba(255,46,99,.6); }
+  .s-card.eliminated{ opacity:.3; filter:grayscale(1); }
+  .s-card.eliminated .s-name{ text-decoration:line-through; }
+  .s-name{ font-size:12px; }
+  .s-order{ font-size:10px; color:var(--accent-pink); font-weight:700; }
+  .survival-log{ font-size:12px; color:var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="spotlight"></div>
+<header>
+  <h1>대강당 추첨 게임</h1>
+  <p>참가자를 등록하고 룰렛 · 사다리타기 · 서바이벌 탈락전으로 진행하세요</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="roulette">🎡 룰렛</button>
+  <button class="tab-btn" data-tab="ladder">🪜 사다리타기</button>
+  <button class="tab-btn" data-tab="survival">🔺 서바이벌 탈락전</button>
+  <button class="github-btn" id="githubSettingsBtn">⚙️ GitHub 연결</button>
+</div>
+
+<div class="modal" id="githubModal">
+  <div class="modal-content">
+    <h2>🔗 GitHub 연결</h2>
+    <input type="text" id="ghRepo" placeholder="저장소명 (예: JET-EVENTS)">
+    <input type="password" id="ghPat" placeholder="Personal Access Token (repo 권한)">
+    <p style="font-size:12px; color:var(--text-dim); margin:12px 0;">
+      토큰은 브라우저 메모리에만 저장되며, 저장 후 상태와 참가자 데이터가 자동으로 GitHub에 동기됩니다.
+    </p>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="ghSaveBtn">저장</button>
+      <button class="btn-cancel" id="ghCancelBtn">취소</button>
+    </div>
+    <div id="ghStatus" style="margin-top:12px; font-size:12px; color:var(--text-dim);"></div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>참가자 명단</h2>
+    <div class="add-row">
+      <input type="text" id="nameInput" placeholder="이름 입력 후 Enter">
+      <button id="addBtn">추가</button>
+    </div>
+    <textarea id="bulkAdd" placeholder="여러 명 한번에 추가 (줄바꿈으로 구분)"></textarea>
+    <button class="ghost-btn" id="bulkAddBtn">일괄 추가</button>
+    <ul id="participantList"></ul>
+    <span class="count-badge" id="countBadge">0명 등록됨</span>
+    <button class="ghost-btn" id="clearAllBtn">전체 삭제</button>
+  </div>
+
+  <div class="stage">
+    <!-- ROULETTE -->
+    <div id="tab-roulette">
+      <h2>룰렛 뽑기</h2>
+      <div id="rouletteWrap">
+        <div class="wheel-holder">
+          <div class="pointer"></div>
+          <canvas id="wheelCanvas" width="500" height="500"></canvas>
+        </div>
+        <label class="opt"><input type="checkbox" id="removeWinnerChk"> 당첨자를 명단에서 자동 제외</label>
+        <button class="spin-btn" id="spinBtn">돌리기</button>
+        <div class="result-banner" id="rouletteResult"></div>
+      </div>
+    </div>
+
+    <!-- LADDER -->
+    <div id="tab-ladder" style="display:none;">
+      <h2>사다리타기</h2>
+      <div id="ladderWrap">
+        <label class="opt"><input type="checkbox" id="ladderCustomChk"> 결과를 직접 입력 (기본: 참가자 이름 랜덤 매칭)</label>
+        <textarea id="ladderCustomResults" placeholder="한 줄에 하나씩 결과 입력 (참가자 수와 같아야 함)" style="display:none;"></textarea>
+        <button class="spin-btn" id="genLadderBtn" style="padding:10px 26px; font-size:14px;">사다리 생성</button>
+        <div id="ladderSvgHolder"></div>
+      </div>
+    </div>
+
+    <!-- SURVIVAL -->
+    <div id="tab-survival">
+      <h2>서바이벌 탈락전</h2>
+      <div id="survivalWrap">
+        <div class="survival-controls">
+          <label class="opt">최종 생존 인원 <input type="number" id="surviveCount" min="1" value="1"></label>
+          <button class="spin-btn" id="startSurvivalBtn" style="padding:10px 24px; font-size:14px;">시작</button>
+          <button class="spin-btn" id="pickBtn" style="padding:10px 24px; font-size:14px; background:linear-gradient(90deg,#2DD4BF,#22a99a); display:none;">탈락자 뽑기</button>
+        </div>
+        <div class="survival-log" id="survivalLog"></div>
+        <div class="survival-grid" id="survivalGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot offline" id="ghStatusDot"></div>
+  <span id="ghStatusText">GitHub 연결 안 됨</span>
+  <button class="github-btn" id="syncBtn" style="display:none;">💾 동기화</button>
+</div>
+
+<script>
+/* ---------------- shared state ---------------- */
+const palette = ['#FF2E63','#FFC53D','#2DD4BF','#7C83FD','#FF8A5B','#4CD4A0','#F45B69','#8E7DBE','#FFD166','#06D6A0'];
+let participants = []; // {id, name, photo}
+let idSeq = 1;
+
+function addParticipant(name){
+  name = name.trim();
+  if(!name) return;
+  participants.push({id: idSeq++, name, photo:null});
+  renderParticipants();
+}
+function removeParticipant(id){
+  participants = participants.filter(p=>p.id!==id);
+  renderParticipants();
+}
+function renderParticipants(){
+  const ul = document.getElementById('participantList');
+  ul.innerHTML='';
+  participants.forEach(p=>{
+    const li = document.createElement('li');
+    const av = document.createElement('div');
+    av.className='avatar';
+    av.title='클릭해서 사진 등록';
+    if(p.photo) av.style.backgroundImage = `url(${p.photo})`;
+    else av.textContent = p.name[0] || '?';
+    av.onclick = ()=>{
+      const inp = document.createElement('input');
+      inp.type='file'; inp.accept='image/*';
+      inp.onchange = e=>{
+        const f = e.target.files[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ()=>{ p.photo = reader.result; renderParticipants(); if(currentTab==='survival') renderSurvivalGrid(); };
+        reader.readAsDataURL(f);
+      };
+      inp.click();
+    };
+    const nameSpan = document.createElement('span');
+    nameSpan.className='pname'; nameSpan.textContent = p.name;
+    const rm = document.createElement('button');
+    rm.className='rm'; rm.textContent='✕';
+    rm.onclick = ()=>removeParticipant(p.id);
+    li.append(av,nameSpan,rm);
+    ul.appendChild(li);
+  });
+  document.getElementById('countBadge').textContent = `${participants.length}명 등록됨`;
+  drawWheel();
+}
+
+document.getElementById('addBtn').onclick = ()=>{
+  addParticipant(document.getElementById('nameInput').value);
+  document.getElementById('nameInput').value='';
+};
+document.getElementById('nameInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ addParticipant(e.target.value); e.target.value=''; }
+});
+document.getElementById('bulkAddBtn').onclick = ()=>{
+  const ta = document.getElementById('bulkAdd');
+  ta.value.split('\n').forEach(n=>addParticipant(n));
+  ta.value='';
+};
+document.getElementById('clearAllBtn').onclick = ()=>{
+  if(confirm('전체 참가자를 삭제할까요?')){ participants=[]; renderParticipants(); }
+};
+
+/* ---------------- tabs ---------------- */
+let currentTab='roulette';
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['roulette','ladder','survival'].forEach(t=>{
+      document.getElementById('tab-'+t).style.display = (t===btn.dataset.tab)?'block':'none';
+    });
+    currentTab = btn.dataset.tab;
+    if(currentTab==='survival') renderSurvivalGrid();
+  };
+});
+
+/* ================= ROULETTE ================= */
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
+let currentRotation = 0;
+
+function drawWheel(){
+  const n = participants.length;
+  const cx=250, cy=250, r=245;
+  ctx.clearRect(0,0,500,500);
+  if(n===0){
+    ctx.fillStyle='#1C202B'; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#8A8F9C'; ctx.font='16px Pretendard Variable, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('참가자를 추가해주세요', cx, cy);
+    return;
+  }
+  const seg = 360/n;
+  for(let i=0;i<n;i++){
+    const start = (i*seg -90) * Math.PI/180;
+    const end = ((i+1)*seg -90) * Math.PI/180;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,start,end);
+    ctx.closePath();
+    ctx.fillStyle = palette[i % palette.length];
+    ctx.fill();
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate((i*seg + seg/2 -90)*Math.PI/180);
+    ctx.textAlign='right';
+    ctx.fillStyle='#0A0C10';
+    ctx.font='bold 15px Pretendard Variable, sans-serif';
+    const label = participants[i].name.length>8? participants[i].name.slice(0,8)+'…' : participants[i].name;
+    ctx.fillText(label, r-16, 6);
+    ctx.restore();
+  }
+}
+drawWheel();
+
+let spinning=false;
+document.getElementById('spinBtn').onclick = ()=>{
+  const n = participants.length;
+  if(n===0 || spinning) return;
+  spinning=true;
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('rouletteResult').textContent='';
+  const seg=360/n;
+  const winnerIndex = Math.floor(Math.random()*n);
+  const theta = winnerIndex*seg + seg/2 + (Math.random()*seg*0.6 - seg*0.3); // slight randomness within segment
+  const R = (360 - theta + 360) % 360;
+  const extraSpins = 6;
+  const base = currentRotation - (currentRotation % 360);
+  let target = base + 360*extraSpins + R;
+  if(target <= currentRotation) target += 360;
+  currentRotation = target;
+  canvas.style.transform = `rotate(${currentRotation}deg)`;
+  setTimeout(()=>{
+    spinning=false;
+    document.getElementById('spinBtn').disabled=false;
+    const winner = participants[winnerIndex];
+    document.getElementById('rouletteResult').textContent = `🎉 당첨: ${winner.name}`;
+    if(document.getElementById('removeWinnerChk').checked){
+      removeParticipant(winner.id);
+    }
+  }, 4600);
+};
+
+/* ================= LADDER ================= */
+document.getElementById('ladderCustomChk').onchange = e=>{
+  document.getElementById('ladderCustomResults').style.display = e.target.checked ? 'block':'none';
+};
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+document.getElementById('genLadderBtn').onclick = ()=>{
+  const n = participants.length;
+  const holder = document.getElementById('ladderSvgHolder');
+  if(n<2){ holder.innerHTML = '<p class="empty-state">사다리를 만들려면 참가자가 2명 이상 필요해요</p>'; return; }
+
+  let results;
+  if(document.getElementById('ladderCustomChk').checked){
+    const lines = document.getElementById('ladderCustomResults').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(lines.length !== n){
+      alert(`결과 항목 수(${lines.length})가 참가자 수(${n})와 같아야 해요.`);
+      return;
+    }
+    results = lines;
+  } else {
+    results = shuffle(participants.map(p=>p.name));
+  }
+
+  const rows = 14;
+  const colWidth = 80;
+  const width = colWidth*n;
+  const height = 340;
+  const rowHeight = height/(rows+1);
+
+  // generate rungs: rungs[row][col] = true means connection between col and col+1
+  const rungs = Array.from({length:rows}, ()=>Array(n-1).fill(false));
+  for(let r=0;r<rows;r++){
+    let c=0;
+    while(c<n-1){
+      if(Math.random()<0.42){
+        rungs[r][c]=true;
+        c+=2; // skip next to avoid overlap
+      } else {
+        c+=1;
+      }
+    }
+  }
+
+  // build svg
+  let svg = `<svg width="${width}" height="${height+70}" style="display:block;margin:0 auto;">`;
+  // vertical lines
+  for(let c=0;c<n;c++){
+    const x = colWidth*c + colWidth/2;
+    svg += `<line x1="${x}" y1="20" x2="${x}" y2="${height+20}" stroke="#2b3040" stroke-width="3"/>`;
+  }
+  // rungs
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<n-1;c++){
+      if(rungs[r][c]){
+        const x1 = colWidth*c + colWidth/2;
+        const x2 = colWidth*(c+1) + colWidth/2;
+        const y = 20 + rowHeight*(r+1);
+        svg += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#3b4256" stroke-width="3"/>`;
+      }
+    }
+  }
+  svg += `<circle id="ladderMarker" cx="0" cy="20" r="8" fill="#FFC53D" style="display:none; filter:drop-shadow(0 0 6px rgba(255,197,61,.8));"/>`;
+  svg += `</svg>`;
+
+  // top labels + bottom result boxes
+  let topRow = `<div class="ladder-top-row" style="width:${width}px; margin:0 auto;">`;
+  participants.forEach((p,i)=>{
+    topRow += `<div class="ladder-col-label" style="min-width:${colWidth}px;"><button class="ladder-start-btn" data-col="${i}">${p.name}</button></div>`;
+  });
+  topRow += `</div>`;
+
+  let bottomRow = `<div class="ladder-bottom-row" style="width:${width}px; margin:6px auto 0;">`;
+  results.forEach((res,i)=>{
+    bottomRow += `<div class="ladder-col-label" style="min-width:${colWidth}px;"><div class="ladder-result-box" id="result-${i}">${res}</div></div>`;
+  });
+  bottomRow += `</div>`;
+
+  holder.innerHTML = topRow + svg + bottomRow;
+
+  document.querySelectorAll('.ladder-start-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('.ladder-start-btn').forEach(b=>b.disabled=false);
+      document.querySelectorAll('.ladder-result-box').forEach(b=>b.classList.remove('hit'));
+      runLadder(parseInt(btn.dataset.col), rungs, n, colWidth, rowHeight, rows, results);
+    };
+  });
+};
+
+function runLadder(startCol, rungs, n, colWidth, rowHeight, rows, results){
+  const marker = document.getElementById('ladderMarker');
+  marker.style.display='block';
+  let col = startCol;
+  let path = [{col, row:0}];
+  for(let r=0;r<rows;r++){
+    if(col>0 && rungs[r][col-1]){ col -=1; }
+    else if(col<n-1 && rungs[r][col]){ col +=1; }
+    path.push({col, row:r+1});
+  }
+  let step=0;
+  function animateStep(){
+    if(step>=path.length){
+      document.getElementById(`result-${col}`).classList.add('hit');
+      return;
+    }
+    const p = path[step];
+    const x = colWidth*p.col + colWidth/2;
+    const y = 20 + rowHeight*p.row;
+    marker.setAttribute('cx', x);
+    marker.setAttribute('cy', y);
+    step++;
+    setTimeout(animateStep, 160);
+  }
+  animateStep();
+}
+
+/* ================= SURVIVAL ================= */
+let survivalPool = [];
+let eliminatedOrder = [];
+let survivalActive = false;
+
+document.getElementById('startSurvivalBtn').onclick = ()=>{
+  if(participants.length < 2){ alert('참가자가 2명 이상 필요해요.'); return; }
+  const target = Math.max(1, parseInt(document.getElementById('surviveCount').value) || 1);
+  if(target >= participants.length){ alert('생존 인원이 전체 참가자보다 적어야 해요.'); return; }
+  survivalPool = participants.map(p=>({...p, status:'alive'}));
+  eliminatedOrder = [];
+  survivalActive = true;
+  document.getElementById('pickBtn').style.display='inline-block';
+  document.getElementById('survivalLog').textContent = `총 ${survivalPool.length}명 중 ${survivalPool.length-target}명 탈락 예정 · 생존 ${target}명`;
+  renderSurvivalGrid();
+};
+
+document.getElementById('pickBtn').onclick = ()=>{
+  const target = Math.max(1, parseInt(document.getElementById('surviveCount').value) || 1);
+  const alive = survivalPool.filter(p=>p.status==='alive');
+  if(alive.length <= target){
+    document.getElementById('survivalLog').textContent = `🏁 생존자 확정: ${alive.map(p=>p.name).join(', ')}`;
+    document.getElementById('pickBtn').style.display='none';
+    return;
+  }
+  // suspense flicker then settle on one
+  const grid = document.getElementById('survivalGrid');
+  let ticks=0;
+  const flicker = setInterval(()=>{
+    document.querySelectorAll('.s-card:not(.eliminated) .s-avatar').forEach(a=>a.parentElement.classList.remove('picked'));
+    const pick = alive[Math.floor(Math.random()*alive.length)];
+    const el = document.getElementById('scard-'+pick.id);
+    if(el) el.classList.add('picked');
+    ticks++;
+    if(ticks>10){
+      clearInterval(flicker);
+      const finalPick = alive[Math.floor(Math.random()*alive.length)];
+      finalPick.status='eliminated';
+      eliminatedOrder.push(finalPick.name);
+      renderSurvivalGrid();
+      document.getElementById('survivalLog').textContent = `❌ 탈락: ${finalPick.name}  (탈락 순서: ${eliminatedOrder.join(' → ')})`;
+    }
+  }, 90);
+};
+
+function renderSurvivalGrid(){
+  const grid = document.getElementById('survivalGrid');
+  const src = survivalActive ? survivalPool : participants.map(p=>({...p, status:'alive'}));
+  if(src.length===0){ grid.innerHTML = '<p class="empty-state">참가자를 등록하고 시작을 눌러주세요</p>'; return; }
+  grid.innerHTML='';
+  src.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 's-card' + (p.status==='eliminated' ? ' eliminated':'');
+    card.id = 'scard-'+p.id;
+    const av = document.createElement('div');
+    av.className='s-avatar';
+    if(p.photo) av.style.backgroundImage = `url(${p.photo})`;
+    else av.textContent = p.name[0]||'?';
+    const nm = document.createElement('div');
+    nm.className='s-name'; nm.textContent=p.name;
+    card.append(av,nm);
+    if(p.status==='eliminated'){
+      const ord = document.createElement('div');
+      ord.className='s-order';
+      ord.textContent = `#${eliminatedOrder.indexOf(p.name)+1} 탈락`;
+      card.appendChild(ord);
+    }
+    grid.appendChild(card);
+  });
+}
+
+/* ================= GITHUB ================= */
+let ghConfig = {owner: null, repo: null, pat: null};
+let ghConnected = false;
+
+document.getElementById('githubSettingsBtn').onclick = ()=>{
+  document.getElementById('githubModal').classList.add('open');
+};
+document.getElementById('ghCancelBtn').onclick = ()=>{
+  document.getElementById('githubModal').classList.remove('open');
+};
+
+document.getElementById('ghSaveBtn').onclick = async ()=>{
+  const repo = document.getElementById('ghRepo').value.trim();
+  const pat = document.getElementById('ghPat').value.trim();
+  if(!repo || !pat){ alert('저장소명과 PAT를 입력하세요'); return; }
+  
+  const status = document.getElementById('ghStatus');
+  status.textContent = '확인 중...';
+  
+  try{
+    const res = await fetch('https://api.github.com/user', {
+      headers: {'Authorization': `token ${pat}`}
+    });
+    if(!res.ok) throw new Error('PAT 인증 실패');
+    const user = await res.json();
+    ghConfig = {owner: user.login, repo, pat};
+    
+    // create or check repo
+    await ensureRepo();
+    ghConnected = true;
+    updateGhStatus();
+    status.textContent = '✅ 연결 성공!';
+    setTimeout(()=>document.getElementById('githubModal').classList.remove('open'), 800);
+    await loadStateFromGithub();
+  } catch(e){
+    status.textContent = `❌ 오류: ${e.message}`;
+    ghConnected = false;
+    updateGhStatus();
+  }
+};
+
+async function ensureRepo(){
+  const {owner, repo, pat} = ghConfig;
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    headers: {'Authorization': `token ${pat}`}
+  });
+  if(res.ok) return; // repo exists
+  
+  // create repo
+  const createRes = await fetch('https://api.github.com/user/repos', {
+    method:'POST',
+    headers: {'Authorization': `token ${pat}`, 'Content-Type':'application/json'},
+    body: JSON.stringify({name:repo, description:'JET-EVENTS 추첨 게임 데이터', private:false})
+  });
+  if(!createRes.ok) throw new Error('저장소 생성 실패');
+  
+  // initialize with index.html & enable pages
+  const indexHtml = document.documentElement.outerHTML;
+  await commitFile('index.html', indexHtml, '초기 커밋: GitHub Pages 활성화');
+  await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
+    method:'POST',
+    headers: {'Authorization': `token ${pat}`, 'Content-Type':'application/json'},
+    body: JSON.stringify({source:{branch:'main', path:'/'}})
+  }).catch(()=>{}); // pages might already be enabled
+}
+
+async function commitFile(path, content, message){
+  const {owner, repo, pat} = ghConfig;
+  const sha = await getFileSha(path);
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+    method:'PUT',
+    headers: {'Authorization': `token ${pat}`, 'Content-Type':'application/json'},
+    body: JSON.stringify({
+      message,
+      content: btoa(unescape(encodeURIComponent(content))),
+      ...(sha && {sha})
+    })
+  });
+  if(!res.ok) throw new Error('커밋 실패');
+}
+
+async function getFileSha(path){
+  const {owner, repo, pat} = ghConfig;
+  try{
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: {'Authorization': `token ${pat}`}
+    });
+    if(res.ok){ const data = await res.json(); return data.sha; }
+  }catch(e){}
+  return null;
+}
+
+async function saveStateToGithub(){
+  if(!ghConnected) return;
+  const state = {
+    participants: participants.map(p=>({...p, photo:null})), // don't save binary photos
+    timestamp: new Date().toISOString()
+  };
+  try{
+    await commitFile('.jet-events.json', JSON.stringify(state, null, 2), `상태 저장: ${new Date().toLocaleString('ko-KR')}`);
+    document.getElementById('ghStatusText').textContent = `✅ 마지막 저장: ${new Date().toLocaleTimeString('ko-KR')}`;
+  }catch(e){
+    console.error('저장 실패', e);
+  }
+}
+
+async function loadStateFromGithub(){
+  if(!ghConnected) return;
+  try{
+    const {owner, repo, pat} = ghConfig;
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/.jet-events.json`, {
+      headers: {'Authorization': `token ${pat}`}
+    });
+    if(!res.ok) return; // file doesn't exist yet
+    const data = await res.json();
+    const state = JSON.parse(atob(data.content));
+    participants = state.participants || [];
+    renderParticipants();
+    renderSurvivalGrid();
+    document.getElementById('ghStatusText').textContent = `✅ 로드됨: ${state.timestamp}`;
+  }catch(e){
+    console.error('로드 실패', e);
+  }
+}
+
+function updateGhStatus(){
+  const dot = document.getElementById('ghStatusDot');
+  const text = document.getElementById('ghStatusText');
+  const syncBtn = document.getElementById('syncBtn');
+  if(ghConnected){
+    dot.className = 'status-dot connected';
+    text.textContent = `🔗 ${ghConfig.owner}/${ghConfig.repo}`;
+    syncBtn.style.display = 'inline-block';
+  } else {
+    dot.className = 'status-dot offline';
+    text.textContent = 'GitHub 연결 안 됨';
+    syncBtn.style.display = 'none';
+  }
+}
+
+document.getElementById('syncBtn').onclick = ()=>{
+  saveStateToGithub();
+};
+
+// auto-save every 30 seconds
+setInterval(()=>{ if(ghConnected) saveStateToGithub(); }, 30000);
+
+/* init */
+renderParticipants();
+renderSurvivalGrid();
+</script>
+</body>
+</html>
