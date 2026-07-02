@@ -26,7 +26,7 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 
 /* ===== album art ===== */
 #albumArt{
-  position:fixed;left:50%;top:38%;z-index:1;
+  position:fixed;left:50%;top:50%;z-index:1;
   width:var(--art-size);height:var(--art-size);
   transform:translate(-50%,-50%);
   background:var(--panel2) center/cover;
@@ -224,6 +224,7 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
     <button data-page="art">💿 아트</button>
     <button data-page="lyrics">📝 가사</button>
     <button data-page="play">▶ 재생</button>
+    <button data-page="bg">🌈 배경 효과</button>
     <button data-page="github">🔗 GitHub</button>
   </div>
   <div class="settings-body">
@@ -273,13 +274,27 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
       <div id="artSliders"></div>
     </div>
 
+    <div class="settings-page" id="page-bg">
+      <h3>배경 효과 (50가지)</h3>
+      <div class="toggle-row" style="margin-bottom:8px;">
+        <button id="bgToggle">배경 효과 켜기/끄기</button>
+        <button id="bgRandomBtn">🎲 랜덤</button>
+      </div>
+      <div class="eq-grid" id="bgGrid" style="max-height:240px;overflow-y:auto;"></div>
+    </div>
+
     <div class="settings-page" id="page-lyrics">
       <h3>가사 설정</h3>
       <div class="toggle-row">
         <button id="lyricsToggle">가사 켜기/끄기</button>
       </div>
       <div id="lyricsSliders"></div>
-      <p style="font-size:11px;color:var(--dim);">가사는 곡 추가 시 입력할 수 있어요. 싱크 가사는 별도 페이지에서 제작 예정!</p>
+      <label>가사 표시 효과 (50가지)</label>
+      <div class="toggle-row" style="margin-bottom:8px;">
+        <button id="lyricEffectRandomBtn">🎲 랜덤</button>
+      </div>
+      <div class="eq-grid" id="lyricsEffectGrid" style="max-height:200px;overflow-y:auto;"></div>
+      <p style="font-size:11px;color:var(--dim);">가사는 곡 추가 시 입력할 수 있어요.</p>
     </div>
 
     <div class="settings-page" id="page-play">
@@ -306,20 +321,42 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
     </div>
 
     <div class="settings-page" id="page-github">
-      <h3>GitHub 연결 (곡 업로드용)</h3>
-      <label>저장소명</label>
-      <input type="text" id="ghRepo" value="JET-EVENTS" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
-      <label>Personal Access Token</label>
-      <input type="password" id="ghPat" placeholder="ghp_..." style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
-      <p style="font-size:11px;color:var(--dim);">토큰은 이 브라우저 세션에만 머뭅니다.</p>
-      <button class="btn-save" id="ghConnectBtn" style="width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:700;">연결</button>
-      <div id="ghConnStatus" style="font-size:12px;color:var(--dim);margin-top:8px;"></div>
+      <h3>GitHub & 설정</h3>
+      <div id="ghConnStatus" style="font-size:12px;color:var(--teal);margin-bottom:12px;"></div>
+      
+      <label>파일 관리</label>
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <button id="ghRefreshBtn" class="btn-save" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:12px;">새로고침</button>
+        <button id="ghPATChangeBtn" class="btn-cancel" style="flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;font-size:12px;background:var(--panel2);color:var(--text);">PAT 변경</button>
+      </div>
+      
+      <div id="ghAdminPanel" style="display:none;">
+        <label>음악 폴더 (music/)</label>
+        <div id="ghMusicList" style="max-height:100px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;background:var(--panel2);margin-bottom:12px;">로딩 중...</div>
+        <label>자켓 폴더 (covers/)</label>
+        <div id="ghCoverList" style="max-height:100px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;background:var(--panel2);margin-bottom:12px;">로딩 중...</div>
+      </div>
+      
+      <label>설정</label>
+      <button id="ghResetSettingsBtn" class="btn-cancel" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:700;font-size:12px;background:var(--panel2);color:var(--text);">⟲ Issues 설정 초기화</button>
     </div>
 
   </div>
 </div>
 
-<div class="modal" id="addModal">
+<div class="modal" id="patModal">
+  <div class="modal-content">
+    <h2>🔐 GitHub 인증</h2>
+    <p style="font-size:12px;color:var(--dim);margin:0 0 12px;">설정을 저장하고 음악을 관리하려면 GitHub PAT를 입력하세요.</p>
+    <input type="text" id="patRepo" placeholder="저장소명 (기본: JET-EVENTS)" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;margin-bottom:10px;">
+    <input type="password" id="patInput" placeholder="ghp_..." style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;margin-bottom:10px;">
+    <div style="display:flex;gap:8px;">
+      <button class="btn-save" id="patConnectBtn" style="flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:700;">연결</button>
+      <button class="btn-cancel" id="patSkipBtn" style="flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:700;">스킵</button>
+    </div>
+    <div id="patStatus" style="font-size:12px;color:var(--dim);margin-top:8px;"></div>
+  </div>
+</div>
   <div class="modal-content">
     <h2>곡 추가</h2>
     <input type="text" id="songArtist" placeholder="가수">
@@ -401,7 +438,31 @@ function initAudio(){
   timeData = new Uint8Array(analyser.fftSize);
 }
 
-/* ================= 50 EQ presets ================= */
+/* ================= 배경 효과 50개 프리셋 ================= */
+const BG_PRESETS=[];
+const BG_SHAPES=['particles','stars','rays','waves','circles','matrix','plasma','ripple','vortex','nebula'];
+const BG_COLORS=[
+  {name:'네온핑크',c:['#FF2E63','#ff7aa0']},{name:'골드',c:['#FFC53D','#ffe29a']},
+  {name:'민트',c:['#2DD4BF','#9df3e8']},{name:'바이올렛',c:['#7C83FD','#c3c6ff']},
+  {name:'선셋',c:['#FF8A5B','#FF2E63']},
+];
+BG_SHAPES.forEach(s=>BG_COLORS.forEach(co=>BG_PRESETS.push({shape:s,label:`${s}·${co.name}`,col:co.c})));
+// 부족하면 더 추가
+while(BG_PRESETS.length<50) BG_PRESETS.push({shape:'particles',label:`프리셋${BG_PRESETS.length+1}`,col:['#fff','#aaa']});
+
+let bgIdx=0, bgOn=true;
+
+/* ================= 가사 효과 50개 프리셋 ================= */
+const LYR_PRESETS=[];
+const LYR_STYLES=['normal','glass','shadow','rainbow','neon','blur','scale','rotate','slide','pulse'];
+const LYR_COLORS2=[
+  {name:'하얀색',c:'#fff'},{name:'핑크',c:'#FF2E63'},{name:'골드',c:'#FFC53D'},
+  {name:'민트',c:'#2DD4BF'},{name:'바이올렛',c:'#7C83FD'},
+];
+LYR_STYLES.forEach(st=>LYR_COLORS2.forEach(co=>LYR_PRESETS.push({style:st,label:`${st}·${co.name}`,col:co.c})));
+while(LYR_PRESETS.length<50) LYR_PRESETS.push({style:'normal',label:`스타일${LYR_PRESETS.length+1}`,col:'#fff'});
+
+let lyrEffectIdx=0;
 const SHAPES=[{key:'bars',name:'바'},{key:'mirror',name:'미러바'},{key:'circle',name:'서클'},{key:'wave',name:'웨이브'},{key:'dots',name:'파티클'}];
 const PALETTES=[
   {name:'네온핑크',c:['#FF2E63','#ff7aa0']},{name:'골드',c:['#FFC53D','#ffe29a']},
@@ -421,6 +482,35 @@ EQ_PRESETS.forEach((p,i)=>{
   b.onclick=()=>{eqIdx=i;grid.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
   grid.appendChild(b);
 });
+
+/* 배경 효과 그리드 */
+const bgGrid=document.getElementById('bgGrid');
+BG_PRESETS.forEach((p,i)=>{
+  const b=document.createElement('button');
+  b.textContent=`${String(i+1).padStart(2,'0')} ${p.label}`;
+  if(i===0)b.classList.add('sel');
+  b.onclick=()=>{bgIdx=i;bgGrid.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
+  bgGrid.appendChild(b);
+});
+document.getElementById('bgToggle').onclick=()=>{bgOn=!bgOn;document.getElementById('bgToggle').classList.toggle('on',bgOn);};
+document.getElementById('bgRandomBtn').onclick=()=>{
+  bgIdx=Math.floor(Math.random()*BG_PRESETS.length);
+  bgGrid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===bgIdx));
+};
+
+/* 가사 효과 그리드 */
+const lyrEffectGrid=document.getElementById('lyricsEffectGrid');
+LYR_PRESETS.forEach((p,i)=>{
+  const b=document.createElement('button');
+  b.textContent=`${String(i+1).padStart(2,'0')} ${p.label}`;
+  if(i===0)b.classList.add('sel');
+  b.onclick=()=>{lyrEffectIdx=i;lyrEffectGrid.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
+  lyrEffectGrid.appendChild(b);
+});
+document.getElementById('lyricEffectRandomBtn').onclick=()=>{
+  lyrEffectIdx=Math.floor(Math.random()*LYR_PRESETS.length);
+  lyrEffectGrid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===lyrEffectIdx));
+};
 function hex(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
 function palColor(pal,t,a=1){
   if(pal==='rainbow')return`hsla(${(t*360+performance.now()/40)%360},90%,60%,${a})`;
@@ -540,6 +630,16 @@ function updateLyrics(){
   const has=lyricsOn&&s&&s.lyrics;
   lyricsBox.classList.toggle('show',!!has);
   lyricsBox.textContent=has?s.lyrics:'';
+  
+  /* 가사 효과 적용 */
+  const le=LYR_PRESETS[lyrEffectIdx];
+  lyricsBox.style.cssText=`color:${le.col};text-shadow:0 2px 12px rgba(0,0,0,.9);`;
+  if(le.style==='glass') lyricsBox.style.backdropFilter='blur(10px)';
+  else if(le.style==='shadow') lyricsBox.style.textShadow='0 4px 20px rgba(0,0,0,.95),0 0 20px '+le.col;
+  else if(le.style==='neon') lyricsBox.style.textShadow=`0 0 10px ${le.col}, 0 0 20px ${le.col}`;
+  else if(le.style==='blur') lyricsBox.style.filter='blur(0.5px)';
+  else if(le.style==='scale') lyricsBox.style.transform='scale(1.05)';
+  else if(le.style==='rotate') lyricsBox.style.transform='skewX(-2deg)';
 }
 refreshArtBtns();
 
@@ -559,6 +659,28 @@ function draw(){
   const W=innerWidth,H=innerHeight;
   ctx.fillStyle=`rgba(10,12,16,${params.dim.val/100*0.35+0.05})`;
   ctx.fillRect(0,0,W,H);
+  
+  /* 배경 효과 렌더링 */
+  if(bgOn&&analyser){
+    const bp=BG_PRESETS[bgIdx];
+    const col=typeof bp.col==='string'?bp.col:bp.col[0];
+    analyser.getByteFrequencyData(freqData);
+    if(bp.shape==='particles'){
+      for(let i=0;i<Math.min(30,N);i++){
+        const v=freqData[(i*freqData.length/N)|0]/255;
+        ctx.fillStyle=col.replace('#','rgba(').replace(/(.{2})(.{2})(.{2})/,'$1,$2,$3,.'+Math.round(v*100)+')');
+        ctx.fillRect(Math.random()*W,Math.random()*H-v*H,2+v*8,2+v*8);
+      }
+    }else if(bp.shape==='stars'){
+      for(let i=0;i<50;i++){
+        const v=freqData[Math.floor(Math.random()*freqData.length)]/255;
+        ctx.fillStyle=col.replace('#','rgba(').replace(/(.{2})(.{2})(.{2})/,'$1,$2,$3,.'+Math.round(v*100)+')');
+        ctx.beginPath();ctx.arc(Math.random()*W,Math.random()*H,1+v*4,0,Math.PI*2);ctx.fill();
+      }
+    }
+    /* 다른 효과들도 여기에 추가 (간단히) */
+  }
+  
   if(!analyser)return;
   analyser.getByteFrequencyData(freqData);
   analyser.getByteTimeDomainData(timeData);
@@ -585,7 +707,7 @@ function draw(){
     return v/255;
   }
   /* 앵커별 기준선/높이 계산 */
-  const cy=H*(params.ypos.val/100); // '중간' 모드 세밀조정용
+  const cy=p.shape==='circle'?H*0.5 : H*(params.ypos.val/100); // 원형은 화면 중앙, 나머지는 y위치 슬라이더
   const A=eqAnchor;
   const hMax=(A==='full'?1.0:0.5)*H*scale; // 막대 최대 높이
   const centerY = A==='bottom'?H*0.75 : A==='top'?H*0.25 : A==='full'?H*0.5 : cy; // 서클/웨이브용
@@ -686,6 +808,10 @@ showUI();
 const hamburger=document.getElementById('hamburger');
 const settingsPanel=document.getElementById('settingsPanel');
 hamburger.onclick=()=>{
+  if(!patConnected){
+    patModal.classList.add('open');
+    return;
+  }
   hamburger.classList.toggle('open');
   settingsPanel.classList.toggle('show');
 };
@@ -699,12 +825,107 @@ document.querySelectorAll('#settingsTabs button').forEach(tab=>{
 });
 
 /* ================= playlist ================= */
-document.getElementById('togglePl').onclick=()=>{
-  document.getElementById('playlistPanel').classList.toggle('hidden');
+/* ================= PAT 모달: 초기 로드 시 띄우기 ================= */
+const patModal=document.getElementById('patModal');
+let patConnected=false;
+
+document.getElementById('patConnectBtn').onclick=async()=>{
+  const repo=(document.getElementById('patRepo').value.trim()||'JET-EVENTS');
+  const pat=document.getElementById('patInput').value.trim();
+  const st=document.getElementById('patStatus');
+  if(!pat){st.textContent='PAT를 입력하세요';return;}
+  st.textContent='확인 중...';
+  try{
+    const r=await fetch('https://api.github.com/user',{headers:{Authorization:`token ${pat}`}});
+    if(!r.ok)throw new Error('인증 실패');
+    const u=await r.json();
+    gh={owner:u.login,repo,pat,connected:true};
+    st.textContent='✅ 연결 성공!';
+    patConnected=true;
+    await loadSettingsFromIssues();
+    setTimeout(()=>patModal.classList.remove('open'),800);
+  }catch(e){st.textContent='❌ '+e.message;patConnected=false;}
 };
-document.getElementById('closePlBtn').onclick=()=>{
-  document.getElementById('playlistPanel').classList.add('hidden');
+document.getElementById('patSkipBtn').onclick=()=>{
+  patConnected=false;
+  patModal.classList.remove('open');
 };
+
+/* ================= GitHub Issues에 설정 저장/로드 ================= */
+async function saveSettingsToIssues(){
+  if(!gh.connected)return;
+  const settingsData={eqIdx,eqAnchor,artOn,spinOn,lyricsOn,bgIdx,bgOn,lyrEffectIdx,
+    artShape:(document.querySelector('#artShapes button.on')||{}).dataset?.shape||'circle',
+    params:Object.fromEntries(Object.entries(params).map(([k,v])=>[k,v.val]))};
+  try{
+    const issues=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/issues?labels=jet-settings`,
+      {headers:{Authorization:`token ${gh.pat}`}});
+    if(!issues.ok)return;
+    const list=await issues.json();
+    const existing=list.find(i=>i.title==='JET-EVENTS Settings');
+    const method=existing?'PATCH':'POST';
+    const path=existing?`/issues/${existing.number}`:'/issues';
+    const body={
+      title:'JET-EVENTS Settings',
+      body:'```json\n'+JSON.stringify(settingsData,null,2)+'\n```',
+      labels:['jet-settings']
+    };
+    await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}${path}`,{
+      method,
+      headers:{Authorization:`token ${gh.pat}`,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+  }catch(e){console.warn('settings save failed',e);}
+}
+
+async function loadSettingsFromIssues(){
+  if(!gh.connected)return;
+  try{
+    const r=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/issues?labels=jet-settings`,
+      {headers:{Authorization:`token ${gh.pat}`}});
+    if(!r.ok)return;
+    const issues=await r.json();
+    const issue=issues.find(i=>i.title==='JET-EVENTS Settings');
+    if(!issue)return;
+    const match=issue.body.match(/```json\n([\s\S]*?)\n```/);
+    if(!match)return;
+    const d=JSON.parse(match[1]);
+    // 기존 loadSettings와 동일한 로직
+    if(typeof d.eqIdx==='number'&&EQ_PRESETS[d.eqIdx]){
+      eqIdx=d.eqIdx;
+      grid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===eqIdx));
+    }
+    if(d.eqAnchor){
+      eqAnchor=d.eqAnchor;
+      document.querySelectorAll('#eqAnchorRow button').forEach(b=>b.classList.toggle('on',b.dataset.anchor===eqAnchor));
+    }
+    if(d.params)Object.entries(d.params).forEach(([k,v])=>{
+      if(params[k]){
+        params[k].val=v;
+        const s=document.getElementById('s-'+k),vs=document.getElementById('v-'+k);
+        if(s)s.value=v;
+        if(vs)vs.textContent=vs.textContent.replace(/^[\d.]+/,v);
+        applyParam(k,v);
+      }
+    });
+  }catch(e){console.warn('settings load failed',e);}
+}
+
+/* 페이지 로드 시 PAT 모달 띄우기 */
+addEventListener('DOMContentLoaded',()=>{
+  // 기존 설정 있으면 로드, 없으면 PAT 모달 띄우기
+  const saved=localStorage.getItem(SETTINGS_KEY);
+  if(!saved)patModal.classList.add('open');
+  else loadSettings();
+});
+
+/* 주기적으로 Issues에 저장 */
+setInterval(()=>{
+  if(patConnected)saveSettingsToIssues();
+},5000);
+
+/* ================= 곡 리스트 드래그 드롭 ================= */
+let draggedIdx=-1;
 function renderPlaylist(){
   const ul=document.getElementById('songList');
   ul.innerHTML='';
@@ -715,6 +936,20 @@ function renderPlaylist(){
   playlist.forEach((s,i)=>{
     const li=document.createElement('li');
     if(i===currentIdx)li.classList.add('playing');
+    li.draggable=true;
+    li.style.cursor='grab';
+    li.addEventListener('dragstart',()=>{draggedIdx=i;li.style.opacity='0.5';});
+    li.addEventListener('dragend',()=>{li.style.opacity='1';});
+    li.addEventListener('dragover',e=>e.preventDefault());
+    li.addEventListener('drop',()=>{
+      if(draggedIdx<0||draggedIdx===i)return;
+      [playlist[draggedIdx],playlist[i]]=[playlist[i],playlist[draggedIdx]];
+      if(draggedIdx===currentIdx)currentIdx=i;
+      else if(i===currentIdx)currentIdx=draggedIdx;
+      draggedIdx=-1;
+      renderPlaylist();
+      if(gh.connected)savePlaylistJson();
+    });
     const mini=document.createElement('div');mini.className='mini';
     if(s.coverUrl)mini.style.backgroundImage=`url(${s.coverUrl})`;
     const nm=document.createElement('span');nm.className='nm';
@@ -725,7 +960,7 @@ function renderPlaylist(){
     del.title='리스트에서 제거';
     del.onclick=async ev=>{
       ev.stopPropagation();
-      if(!confirm(`"${s.artist} - ${s.title}"를 리스트에서 뺄까요?\n(저장소의 음악 파일은 남아있고, 폴더에서 다시 추가할 수 있어요)`))return;
+      if(!confirm(`"${s.artist} - ${s.title}"를 리스트에서 뺄까요?`))return;
       playlist.splice(i,1);
       if(i===currentIdx){audio.pause();currentIdx=-1;}
       else if(i<currentIdx)currentIdx--;
@@ -795,7 +1030,7 @@ document.getElementById('wakeLockBtn').onclick=async()=>{
 const SETTINGS_KEY='jet-music-settings';
 function saveSettings(){
   try{
-    const data={eqIdx,eqAnchor,artOn,spinOn,lyricsOn,
+    const data={eqIdx,eqAnchor,artOn,spinOn,lyricsOn,bgIdx,bgOn,lyrEffectIdx,
       artShape:(document.querySelector('#artShapes button.on')||{}).dataset?.shape||'circle',
       params:Object.fromEntries(Object.entries(params).map(([k,v])=>[k,v.val]))};
     localStorage.setItem(SETTINGS_KEY,JSON.stringify(data));
@@ -809,16 +1044,15 @@ function loadSettings(){
       eqIdx=d.eqIdx;
       grid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===eqIdx));
     }
-    if(d.eqAnchor){
-      eqAnchor=d.eqAnchor;
-      document.querySelectorAll('#eqAnchorRow button').forEach(b=>b.classList.toggle('on',b.dataset.anchor===eqAnchor));
+    if(typeof d.bgIdx==='number'&&BG_PRESETS[d.bgIdx]){
+      bgIdx=d.bgIdx;
+      document.getElementById('bgGrid').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===bgIdx));
     }
-    if(d.artShape){
-      document.querySelectorAll('#artShapes button').forEach(b=>b.classList.toggle('on',b.dataset.shape===d.artShape));
-      art.className=art.className.replace(/shape-\w+/,'shape-'+d.artShape);
+    if(typeof d.lyrEffectIdx==='number'&&LYR_PRESETS[d.lyrEffectIdx]){
+      lyrEffectIdx=d.lyrEffectIdx;
+      document.getElementById('lyricsEffectGrid').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===lyrEffectIdx));
     }
-    if(typeof d.artOn==='boolean')artOn=d.artOn;
-    if(typeof d.spinOn==='boolean')spinOn=d.spinOn;
+    if(typeof d.bgOn==='boolean')bgOn=d.bgOn;
     if(typeof d.lyricsOn==='boolean')lyricsOn=d.lyricsOn;
     refreshArtBtns();
     if(d.params)Object.entries(d.params).forEach(([k,v])=>{
@@ -826,7 +1060,7 @@ function loadSettings(){
         params[k].val=v;
         const s=document.getElementById('s-'+k),vs=document.getElementById('v-'+k);
         if(s)s.value=v;
-        if(vs)vs.textContent=vs.textContent.replace(/^[\d.]+/,v); // 근사 표기
+        if(vs)vs.textContent=vs.textContent.replace(/^[\d.]+/,v);
         applyParam(k,v);
       }
     });
@@ -1043,10 +1277,88 @@ document.getElementById('ghConnectBtn').onclick=async()=>{
     if(!r.ok)throw new Error('토큰 인증 실패');
     const u=await r.json();
     gh={owner:u.login,repo,pat,connected:true};
-    st.textContent=`✅ ${u.login}/${repo} 연결됨`;
+    st.textContent=`✅ ${u.login}/${repo} 연결됨 (관리자 모드 활성)`;
+    document.getElementById('ghAdminPanel').style.display='block';
     await loadPlaylistJson();
-  }catch(e){st.textContent='❌ '+e.message;gh.connected=false;}
+    await loadGhFileList();
+  }catch(e){st.textContent='❌ '+e.message;gh.connected=false;document.getElementById('ghAdminPanel').style.display='none';}
 };
+
+/* GitHub 상태 표시 */
+function updateGhStatus(){
+  const st=document.getElementById('ghConnStatus');
+  if(gh.connected){
+    st.textContent=`✅ ${gh.owner}/${gh.repo}`;
+    document.getElementById('ghAdminPanel').style.display='block';
+  }else{
+    st.textContent='GitHub 미연결';
+    document.getElementById('ghAdminPanel').style.display='none';
+  }
+}
+
+document.getElementById('ghRefreshBtn').onclick=loadGhFileList;
+document.getElementById('ghPATChangeBtn').onclick=()=>{
+  patModal.classList.add('open');
+  settingsPanel.classList.remove('show');
+};
+document.getElementById('ghResetSettingsBtn').onclick=async()=>{
+  if(!confirm('Issues의 모든 설정을 삭제할까요?'))return;
+  try{
+    const r=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/issues?labels=jet-settings`,
+      {headers:{Authorization:`token ${gh.pat}`}});
+    const issues=await r.json();
+    for(const issue of issues.filter(i=>i.title==='JET-EVENTS Settings')){
+      await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/issues/${issue.number}`,{
+        method:'PATCH',
+        headers:{Authorization:`token ${gh.pat}`,'Content-Type':'application/json'},
+        body:JSON.stringify({state:'closed'})
+      });
+    }
+    alert('설정이 초기화됐어요. 새로고침하면 기본값으로 돌아갑니다.');
+  }catch(e){alert('초기화 실패: '+e.message);}
+};
+async function loadGhFileList(){
+  async function list(dir){
+    const r=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${dir}`,
+      {headers:{Authorization:`token ${gh.pat}`}});
+    if(!r.ok)return[];
+    const files=await r.json();
+    return files.filter(f=>f.type==='file').map(f=>({name:f.name,path:f.path,sha:f.sha}));
+  }
+  const [musicFiles,coverFiles]=await Promise.all([list('music'),list('covers')]);
+  
+  function renderList(files,eleId){
+    const el=document.getElementById(eleId);
+    el.innerHTML='';
+    if(!files.length){el.innerHTML='<div style="color:var(--dim);">폴더가 비어있어요</div>';return;}
+    files.forEach(f=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--line);';
+      const name=document.createElement('span');name.textContent=f.name;name.style.flex='1';name.style.overflow='hidden';name.style.textOverflow='ellipsis';name.style.whiteSpace='nowrap';
+      const del=document.createElement('button');
+      del.textContent='✕ 삭제';
+      del.style.cssText='background:var(--pink);color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700;';
+      del.onclick=async()=>{
+        if(!confirm(`"${f.name}"를 정말 삭제할까요?\n(복구 불가능해요)`))return;
+        try{
+          del.disabled=true;del.textContent='삭제 중...';
+          const deleteRes=await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${f.path}`,{
+            method:'DELETE',
+            headers:{Authorization:`token ${gh.pat}`,'Content-Type':'application/json'},
+            body:JSON.stringify({message:`파일 삭제: ${f.name}`,sha:f.sha})
+          });
+          if(!deleteRes.ok)throw new Error('삭제 실패');
+          row.remove();
+          await savePlaylistJson(); // playlist.json도 갱신
+        }catch(e){del.disabled=false;del.textContent='❌';alert('삭제 실패: '+e.message);}
+      };
+      row.append(name,del);
+      el.appendChild(row);
+    });
+  }
+  renderList(musicFiles,'ghMusicList');
+  renderList(coverFiles,'ghCoverList');
+}
 function fileToB64(f){
   return new Promise((res,rej)=>{
     const r=new FileReader();
