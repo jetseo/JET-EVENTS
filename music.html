@@ -65,6 +65,19 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 #lyricsBox::-webkit-scrollbar{display:none;}
 #lyricsBox.show{display:block;}
 
+/* ===== mini progress bar (UI 숨김 상태에서도 항상 표시) ===== */
+#miniProgress{
+  position:fixed;left:0;right:0;bottom:0;z-index:5;
+  height:var(--mini-h,4px);
+  background:rgba(255,255,255,.08);
+}
+#miniProgressFill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--pink),var(--gold));
+  box-shadow:0 0 8px rgba(255,46,99,.6);
+  transition:width .25s linear;
+}
+
 /* ===== top bar ===== */
 .topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;padding:12px 14px;gap:10px;}
 .topbar h1{font-family:'Black Han Sans',sans-serif;font-size:18px;margin:0;letter-spacing:.5px;
@@ -182,6 +195,7 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 <canvas id="vizCanvas"></canvas>
 <div id="albumArt" class="shape-circle"></div>
 <div id="lyricsBox"></div>
+<div id="miniProgress"><div id="miniProgressFill"></div></div>
 
 <div class="topbar ui">
   <h1>MUSIC STAGE</h1>
@@ -405,6 +419,11 @@ function applyParam(key,v){
   if(key==='artY') document.getElementById('albumArt').style.top=v+'%';
   if(key==='lyrSize') r.setProperty('--lyr-size',v+'px');
   if(key==='lyrY') r.setProperty('--lyr-y',v+'%');
+  if(key==='miniH'){
+    r.setProperty('--mini-h',v+'px');
+    const mp=document.getElementById('miniProgress');
+    if(mp) mp.style.display=v===0?'none':'block';
+  }
 }
 /* 앨범아트: 크기 / 회전속도(RPM) / 세로 위치 */
 mkSlider('artSliders','artSize','크기',15,80,38,3,v=>v+'vmin');
@@ -418,6 +437,8 @@ mkSlider('eqSliders','scale','크기',30,220,100);
 mkSlider('eqSliders','ypos','세로 위치',0,100,50);
 mkSlider('eqSliders','sens','민감도',30,250,100);
 mkSlider('eqSliders','dim','배경 어둡기',20,100,85);
+/* 하단 미니 진행바 높이 (0이면 숨김) */
+mkSlider('eqSliders','miniH','진행바 높이',0,20,4,1,v=>v+'px');
 
 /* ================= album art & lyrics toggles ================= */
 const art=document.getElementById('albumArt');
@@ -545,7 +566,7 @@ function draw(){
 }
 draw();
 
-/* ================= auto-hide UI (3초) ================= */
+/* ================= UI 표시/숨김: 탭 토글 + 3초 자동 숨김 ================= */
 let hideTimer=null;
 function anyPanelOpen(){
   return document.querySelector('.drawer.show')||document.querySelector('.modal.open')
@@ -559,8 +580,21 @@ function showUI(){
     if(!anyPanelOpen()&&!audio.paused) document.body.classList.add('ui-hidden');
   },3000);
 }
-['pointerdown','pointermove','touchstart','keydown'].forEach(ev=>
-  addEventListener(ev,showUI,{passive:true}));
+function hideUI(){
+  if(anyPanelOpen())return; // 설정창 열려 있으면 유지
+  clearTimeout(hideTimer);
+  document.body.classList.add('ui-hidden');
+}
+/* 배경(캔버스/앨범아트/가사) 탭: 숨김 상태면 표시(3초), 표시 상태면 즉시 숨김 */
+document.addEventListener('click',e=>{
+  if(e.target.closest('.ui,.drawer,.playlist,.modal,.option-rail'))return;
+  document.body.classList.contains('ui-hidden') ? showUI() : hideUI();
+});
+/* UI 조작 중에는 타이머 리셋 (사용 도중 사라지지 않게) */
+document.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.ui,.drawer,.playlist,.option-rail'))showUI();
+},{passive:true});
+addEventListener('keydown',showUI);
 showUI();
 
 /* ================= hamburger & drawers ================= */
@@ -650,7 +684,10 @@ document.getElementById('shuffleBtn').onclick=e=>{shuffle=!shuffle;e.target.styl
 document.getElementById('repeatBtn').onclick=e=>{repeat=!repeat;e.target.style.opacity=repeat?1:.5;};
 const seek=document.getElementById('seek');
 audio.ontimeupdate=()=>{
-  if(audio.duration)seek.value=audio.currentTime/audio.duration*100;
+  if(audio.duration){
+    seek.value=audio.currentTime/audio.duration*100;
+    document.getElementById('miniProgressFill').style.width=(audio.currentTime/audio.duration*100)+'%';
+  }
   document.getElementById('curTime').textContent=fmt(audio.currentTime);
   document.getElementById('durTime').textContent=fmt(audio.duration||0);
 };
