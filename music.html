@@ -239,7 +239,15 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 
 <div class="drawer" id="drawer-style">
   <h3>이퀄라이저 조절</h3>
+  <label>위치</label>
+  <div class="toggle-row" id="eqAnchorRow">
+    <button data-anchor="bottom" class="on">⬇ 하단</button>
+    <button data-anchor="middle">➖ 중간</button>
+    <button data-anchor="top">⬆ 상단</button>
+    <button data-anchor="full">⛶ 전체</button>
+  </div>
   <div id="eqSliders"></div>
+  <p style="font-size:11px;color:var(--dim);">세로 위치 슬라이더는 '중간' 모드에서 세밀 조정용이에요.</p>
 </div>
 
 <div class="drawer" id="drawer-github">
@@ -315,7 +323,10 @@ function resize(){
   canvas.width = innerWidth*dpr; canvas.height = innerHeight*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize,300));
+if(window.visualViewport) visualViewport.addEventListener('resize', resize);
+resize();
 
 /* ================= web audio (실제 음원 분석) ================= */
 let audioCtx, analyser, srcNode, freqData, timeData;
@@ -444,6 +455,16 @@ function updateLyrics(){
 }
 refreshArtBtns();
 
+/* 이퀄라이저 위치 앵커 (하단/중간/상단/전체) */
+let eqAnchor='bottom';
+document.querySelectorAll('#eqAnchorRow button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#eqAnchorRow button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    eqAnchor=b.dataset.anchor;
+  };
+});
+
 /* ================= render loop ================= */
 function draw(){
   requestAnimationFrame(draw);
@@ -455,51 +476,68 @@ function draw(){
   analyser.getByteTimeDomainData(timeData);
   const p=EQ_PRESETS[eqIdx];
   const sens=params.sens.val/100,scale=params.scale.val/100;
-  const cy=H*(params.ypos.val/100);
   const N=innerWidth<700?64:96;
+  /* 앵커별 기준선/높이 계산 */
+  const cy=H*(params.ypos.val/100); // '중간' 모드 세밀조정용
+  const A=eqAnchor;
+  const hMax=(A==='full'?1.0:0.5)*H*scale; // 막대 최대 높이
+  const centerY = A==='bottom'?H*0.75 : A==='top'?H*0.25 : A==='full'?H*0.5 : cy; // 서클/웨이브용
+
+  function barRect(x,w,v){ // 앵커에 따라 막대 그리기
+    const h=v*hMax;
+    if(A==='top')      ctx.fillRect(x,0,w,h);
+    else if(A==='middle') ctx.fillRect(x,cy-h/2,w,h);
+    else               ctx.fillRect(x,H-h,w,h); // bottom & full: 바닥에서 위로
+  }
+
   if(p.shape==='bars'){
     const bw=W/N;
     for(let i=0;i<N;i++){
-      const v=freqData[(i*freqData.length/N)|0]/255*sens;
-      const h=v*H*0.5*scale;
+      const v=Math.min(1,freqData[(i*freqData.length/N)|0]/255*sens);
       ctx.fillStyle=palColor(p.pal,i/N,.9);
-      ctx.fillRect(i*bw+1,cy+H*0.25*scale-h,bw-2,h);
+      barRect(i*bw+1,bw-2,v);
     }
   }else if(p.shape==='mirror'){
     const bw=W/N;
+    const M=A==='bottom'?H*0.85 : A==='top'?H*0.15 : A==='middle'?cy : H*0.5; // 미러 기준선
+    const mMax=(A==='full'?0.5:0.3)*H*scale;
     for(let i=0;i<N;i++){
-      const v=freqData[(i*freqData.length/N)|0]/255*sens;
-      const h=v*H*0.3*scale;
+      const v=Math.min(1,freqData[(i*freqData.length/N)|0]/255*sens);
+      const h=v*mMax;
       ctx.fillStyle=palColor(p.pal,i/N,.9);
-      ctx.fillRect(i*bw+1,cy-h,bw-2,h);
+      ctx.fillRect(i*bw+1,M-h,bw-2,h);
       ctx.fillStyle=palColor(p.pal,i/N,.35);
-      ctx.fillRect(i*bw+1,cy,bw-2,h*0.6);
+      ctx.fillRect(i*bw+1,M,bw-2,h*0.6);
     }
   }else if(p.shape==='circle'){
-    const cx=W/2,R=Math.min(W,H)*0.16*scale;
+    const cx=W/2,R=Math.min(W,H)*(A==='full'?0.22:0.16)*scale;
     for(let i=0;i<N;i++){
       const v=freqData[(i*freqData.length/N)|0]/255*sens;
       const ang=i/N*Math.PI*2-Math.PI/2;
-      const len=v*Math.min(W,H)*0.28*scale;
+      const len=v*Math.min(W,H)*(A==='full'?0.38:0.28)*scale;
       ctx.strokeStyle=palColor(p.pal,i/N,.9);ctx.lineWidth=3;
       ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(ang)*R,cy+Math.sin(ang)*R);
-      ctx.lineTo(cx+Math.cos(ang)*(R+len),cy+Math.sin(ang)*(R+len));
+      ctx.moveTo(cx+Math.cos(ang)*R,centerY+Math.sin(ang)*R);
+      ctx.lineTo(cx+Math.cos(ang)*(R+len),centerY+Math.sin(ang)*(R+len));
       ctx.stroke();
     }
   }else if(p.shape==='wave'){
     ctx.lineWidth=3*scale;ctx.beginPath();
+    const amp=(A==='full'?0.45:0.25)*H*scale*sens;
     for(let i=0;i<timeData.length;i+=2){
       const x=i/timeData.length*W;
-      const y=cy+(timeData[i]-128)/128*H*0.25*scale*sens;
+      const y=centerY+(timeData[i]-128)/128*amp;
       i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
     }
     ctx.strokeStyle=palColor(p.pal,.5,.95);ctx.stroke();
   }else if(p.shape==='dots'){
     for(let i=0;i<N;i++){
-      const v=freqData[(i*freqData.length/N)|0]/255*sens;
+      const v=Math.min(1,freqData[(i*freqData.length/N)|0]/255*sens);
       const x=i/N*W+W/N/2;
-      const y=cy-v*H*0.4*scale+Math.sin(performance.now()/300+i)*6;
+      let y;
+      if(A==='top') y=v*hMax+Math.sin(performance.now()/300+i)*6;
+      else if(A==='middle') y=cy-v*hMax*0.8+Math.sin(performance.now()/300+i)*6;
+      else y=H-v*hMax+Math.sin(performance.now()/300+i)*6; // bottom & full
       ctx.fillStyle=palColor(p.pal,i/N,.9);
       ctx.beginPath();ctx.arc(x,y,2+v*9*scale,0,Math.PI*2);ctx.fill();
     }
