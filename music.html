@@ -261,9 +261,13 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
     <label class="filebtn" id="audioLabel">🎵 음악 파일 선택 (mp3 등)
       <input type="file" id="audioFile" accept="audio/*" hidden>
     </label>
+    <button class="filebtn" id="repoAudioBtn" style="border-style:solid;">📁 저장소 music 폴더에서 선택</button>
+    <div id="repoAudioList" style="display:none;max-height:140px;overflow-y:auto;margin-bottom:10px;"></div>
     <label class="filebtn" id="coverLabel">🖼 자켓 이미지 선택 (선택사항)
       <input type="file" id="coverFile" accept="image/*" hidden>
     </label>
+    <button class="filebtn" id="repoCoverBtn" style="border-style:solid;">📁 저장소 covers 폴더에서 선택</button>
+    <div id="repoCoverList" style="display:none;max-height:140px;overflow-y:auto;margin-bottom:10px;"></div>
     <textarea id="songLyrics" placeholder="가사 (선택사항)"></textarea>
     <div class="modal-btns">
       <button class="btn-save" id="saveSongBtn">저장 (GitHub 업로드)</button>
@@ -628,15 +632,61 @@ addEventListener('keydown',e=>{
 
 /* ================= add song ================= */
 let pendingAudio=null,pendingCover=null;
+let repoAudioUrl=null,repoCoverUrl=null; // 저장소 폴더에서 선택한 경우
+
+/* 저장소 폴더 브라우징 (PAT 없이도 public repo는 조회 가능) */
+const DEFAULT_OWNER='jetseo', DEFAULT_REPO='JET-EVENTS';
+async function listRepoDir(dir){
+  const owner=gh.owner||DEFAULT_OWNER, repo=gh.repo||DEFAULT_REPO;
+  const headers=gh.connected?{Authorization:`token ${gh.pat}`}:{};
+  const r=await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${dir}`,{headers});
+  if(!r.ok)return[];
+  return(await r.json()).filter(f=>f.type==='file');
+}
+function parseArtistTitle(filename){
+  const base=filename.replace(/\.[^.]+$/,'');
+  const m=base.split(' - ');
+  return m.length>=2?{artist:m[0].trim(),title:m.slice(1).join(' - ').trim()}:{artist:'',title:base};
+}
+async function showRepoList(dir,listElId,onPick){
+  const el=document.getElementById(listElId);
+  if(el.style.display==='block'){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:6px;">불러오는 중...</div>';
+  const files=await listRepoDir(dir);
+  if(!files.length){el.innerHTML='<div style="font-size:12px;color:var(--dim);padding:6px;">폴더가 비어있거나 접근 불가</div>';return;}
+  el.innerHTML='';
+  files.forEach(f=>{
+    const b=document.createElement('button');
+    b.className='filebtn';b.style.marginBottom='4px';b.style.padding='8px';b.style.fontSize='12px';
+    b.textContent=f.name;
+    b.onclick=()=>{onPick(f);el.style.display='none';};
+    el.appendChild(b);
+  });
+}
+document.getElementById('repoAudioBtn').onclick=()=>showRepoList('music','repoAudioList',f=>{
+  repoAudioUrl=f.download_url;pendingAudio=null;
+  document.getElementById('audioLabel').classList.add('ok');
+  document.getElementById('audioLabel').firstChild.textContent='📁 '+f.name;
+  const {artist,title}=parseArtistTitle(f.name);
+  if(artist&&!document.getElementById('songArtist').value)document.getElementById('songArtist').value=artist;
+  if(title&&!document.getElementById('songTitle').value)document.getElementById('songTitle').value=title;
+});
+document.getElementById('repoCoverBtn').onclick=()=>showRepoList('covers','repoCoverList',f=>{
+  repoCoverUrl=f.download_url;pendingCover=null;
+  document.getElementById('coverLabel').classList.add('ok');
+  document.getElementById('coverLabel').firstChild.textContent='📁 '+f.name;
+});
+
 document.getElementById('addSongBtn').onclick=()=>document.getElementById('addModal').classList.add('open');
 document.getElementById('cancelSongBtn').onclick=()=>document.getElementById('addModal').classList.remove('open');
 document.getElementById('audioFile').onchange=e=>{
-  pendingAudio=e.target.files[0]||null;
+  pendingAudio=e.target.files[0]||null;repoAudioUrl=null;
   document.getElementById('audioLabel').classList.toggle('ok',!!pendingAudio);
   if(pendingAudio)document.getElementById('audioLabel').firstChild.textContent='🎵 '+pendingAudio.name;
 };
 document.getElementById('coverFile').onchange=e=>{
-  pendingCover=e.target.files[0]||null;
+  pendingCover=e.target.files[0]||null;repoCoverUrl=null;
   document.getElementById('coverLabel').classList.toggle('ok',!!pendingCover);
   if(pendingCover)document.getElementById('coverLabel').firstChild.textContent='🖼 '+pendingCover.name;
 };
@@ -645,42 +695,49 @@ document.getElementById('saveSongBtn').onclick=async()=>{
   const title=document.getElementById('songTitle').value.trim();
   const lyrics=document.getElementById('songLyrics').value.trim();
   const st=document.getElementById('uploadStatus');
-  if(!artist||!title||!pendingAudio){st.textContent='가수, 제목, 음악 파일은 필수예요.';return;}
-  const song={artist,title,lyrics,audioUrl:URL.createObjectURL(pendingAudio),
-    coverUrl:pendingCover?URL.createObjectURL(pendingCover):null,local:true};
+  if(!artist||!title||(!pendingAudio&&!repoAudioUrl)){st.textContent='가수, 제목, 음악 파일(또는 폴더 선택)은 필수예요.';return;}
+  const song={artist,title,lyrics,
+    audioUrl:repoAudioUrl||URL.createObjectURL(pendingAudio),
+    coverUrl:repoCoverUrl||(pendingCover?URL.createObjectURL(pendingCover):null),
+    local:!repoAudioUrl&&!gh.connected};
   if(gh.connected){
     try{
       st.textContent='GitHub 업로드 중... (파일 크기에 따라 시간이 걸려요)';
       const base=`${artist} - ${title}`.replace(/[\\/:*?"<>|#%]/g,'_');
-      const aExt=(pendingAudio.name.split('.').pop()||'mp3');
-      const aPath=`music/${base}.${aExt}`;
-      await ghUpload(aPath,pendingAudio,`곡 추가: ${base}`);
-      song.audioUrl=rawUrl(aPath);song.local=false;
+      if(pendingAudio){ // 새 로컬 파일만 업로드, 폴더에서 고른 건 이미 저장소에 있음
+        const aExt=(pendingAudio.name.split('.').pop()||'mp3');
+        const aPath=`music/${base}.${aExt}`;
+        await ghUpload(aPath,pendingAudio,`곡 추가: ${base}`);
+        song.audioUrl=rawUrl(aPath);
+      }
       if(pendingCover){
         const cExt=(pendingCover.name.split('.').pop()||'jpg');
         const cPath=`covers/${base}.${cExt}`;
         await ghUpload(cPath,pendingCover,`자켓 추가: ${base}`);
         song.coverUrl=rawUrl(cPath);
       }
+      song.local=false;
       playlist.push(song);
       await savePlaylistJson();
-      st.textContent='✅ 업로드 완료!';
+      st.textContent='✅ 저장 완료!';
     }catch(err){
       st.textContent='❌ 업로드 실패: '+err.message+' (로컬 재생용으로만 추가됨)';
       playlist.push(song);
     }
   }else{
     playlist.push(song);
-    st.textContent='GitHub 미연결 → 이 세션에만 추가됨 (새로고침 시 사라짐)';
+    st.textContent=repoAudioUrl?'저장소 곡으로 추가됨 (playlist.json 갱신은 GitHub 연결 필요)':'GitHub 미연결 → 이 세션에만 추가됨';
   }
   renderPlaylist();
   setTimeout(()=>{
     document.getElementById('addModal').classList.remove('open');
     st.textContent='';
     ['songArtist','songTitle','songLyrics'].forEach(id=>document.getElementById(id).value='');
-    pendingAudio=pendingCover=null;
+    pendingAudio=pendingCover=null;repoAudioUrl=repoCoverUrl=null;
     document.getElementById('audioLabel').classList.remove('ok');
     document.getElementById('coverLabel').classList.remove('ok');
+    document.getElementById('audioLabel').firstChild.textContent='🎵 음악 파일 선택 (mp3 등)';
+    document.getElementById('coverLabel').firstChild.textContent='🖼 자켓 이미지 선택 (선택사항)';
   },1400);
 };
 
