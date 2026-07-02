@@ -8,16 +8,16 @@
   },
   {
     "artist": "JetSeo",
-    "title": "내 웃음소리는 TQQQ",
-    "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo%20-%20%EB%82%B4%20%EC%9B%83%EC%9D%8C%EC%86%8C%EB%A6%AC%EB%8A%94%20TQQQ.mp3",
-    "coverUrl": null,
+    "title": "속쓰린 SOXL",
+    "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.mp3",
+    "coverUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/covers/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.png",
     "lyrics": ""
   },
   {
     "artist": "JetSeo",
-    "title": "속쓰린 SOXL",
-    "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.mp3",
-    "coverUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/covers/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.png",
+    "title": "내 웃음소리는 TQQQ",
+    "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo - 내 웃음소리는 TQQQ.mp3",
+    "coverUrl": null,
     "lyrics": ""
   }
 ]
