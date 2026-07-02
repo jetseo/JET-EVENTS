@@ -235,6 +235,14 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 
     <div class="settings-page" id="page-style">
       <h3>이퀄라이저 조절</h3>
+      <label>막대 갯수</label>
+      <div class="arrow-slider">
+        <button data-t="barCount" data-d="-8">◀</button>
+        <input type="range" id="s-barCount" min="32" max="256" value="96" step="8">
+        <button data-t="barCount" data-d="8">▶</button>
+        <button class="reset" data-r="barCount">초기화</button>
+      </div>
+      <span class="slider-val" id="v-barCount">96개</span>
       <label>위치</label>
       <div class="toggle-row" id="eqAnchorRow">
         <button data-anchor="bottom" class="on">⬇ 하단</button>
@@ -466,6 +474,28 @@ function applyParam(key,v){
 mkSlider('artSliders','artSize','크기',15,80,38,3,v=>v+'vmin');
 mkSlider('artSliders','artSpeed','회전 속도',1,45,5,2,v=>v+' RPM');
 mkSlider('artSliders','artY','세로 위치',15,80,38,3,v=>v+'%');
+/* 이퀄라이저 막대 갯수 (초기화 불필요, 파라미터 직접 사용) */
+params.barCount={val:96,def:96,min:32,max:256};
+document.getElementById('s-barCount').oninput=e=>{
+  const v=+e.target.value;
+  params.barCount.val=v;
+  document.getElementById('v-barCount').textContent=v+'개';
+};
+document.querySelectorAll('#s-barCount').parentElement?.querySelectorAll('button[data-t="barCount"]').forEach(b=>{
+  b.onclick=()=>{
+    const v=Math.max(32,Math.min(256,params.barCount.val+b.dataset.d*1));
+    params.barCount.val=v;
+    document.getElementById('s-barCount').value=v;
+    document.getElementById('v-barCount').textContent=v+'개';
+  };
+});
+/* 초기화 버튼 */
+document.querySelector('[data-r="barCount"]').onclick=()=>{
+  params.barCount.val=96;
+  document.getElementById('s-barCount').value=96;
+  document.getElementById('v-barCount').textContent='96개';
+};
+
 /* 가사: 크기 / 세로 위치 */
 mkSlider('lyricsSliders','lyrSize','가사 크기',12,64,22,2,v=>v+'px');
 mkSlider('lyricsSliders','lyrY','가사 위치',20,92,72,3,v=>v+'%');
@@ -534,7 +564,7 @@ function draw(){
   analyser.getByteTimeDomainData(timeData);
   const p=EQ_PRESETS[eqIdx];
   const sens=params.sens.val/100,scale=params.scale.val/100;
-  const N=innerWidth<700?64:96;
+  const N=params.barCount?.val||96; // 동적 막대 갯수
   /* 로그 스케일 주파수 매핑: 저음~고음을 귀 감각(옥타브)대로 배분.
      초고역(에너지 거의 없는 상위 빈)은 잘라내서 전체 폭이 살아있게 함 */
   const usable=Math.floor(freqData.length*0.72); // ~16kHz까지
