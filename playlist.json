@@ -26,5 +26,12 @@
     "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.mp3",
     "coverUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/covers/JetSeo%20-%20%EC%86%8D%EC%93%B0%EB%A6%B0%20SOXL.png",
     "lyrics": ""
+  },
+  {
+    "artist": "JetSeo",
+    "title": "Ticker Tape",
+    "audioUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/music/JetSeo - 내 웃음소리는 TQQQ.mp3",
+    "coverUrl": "https://raw.githubusercontent.com/jetseo/JET-EVENTS/main/covers/JetSeo%20-%20Ticker%20Tape.png",
+    "lyrics": ""
   }
 ]
