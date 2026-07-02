@@ -538,13 +538,21 @@ function draw(){
   /* 로그 스케일 주파수 매핑: 저음~고음을 귀 감각(옥타브)대로 배분.
      초고역(에너지 거의 없는 상위 빈)은 잘라내서 전체 폭이 살아있게 함 */
   const usable=Math.floor(freqData.length*0.72); // ~16kHz까지
+  /* 파워 커브(γ=1.7) + 빈 사이 보간: 저음 뭉침 없이 막대마다 매끄럽게 다른 값 */
   function freqVal(i){
-    const t0=i/N, t1=(i+1)/N;
-    const lo=Math.max(1,Math.floor(Math.pow(usable,t0)));
-    const hi=Math.max(lo+1,Math.ceil(Math.pow(usable,t1)));
-    let sum=0;
-    for(let b=lo;b<hi&&b<usable;b++)sum+=freqData[b];
-    return (sum/(hi-lo))/255;
+    const t=(i+0.5)/N;
+    const pos=1+(usable-2)*Math.pow(t,1.7); // 소수점 위치
+    const lo=Math.floor(pos), frac=pos-lo;
+    const a=freqData[lo]||0, b=freqData[lo+1]||a;
+    let v=(a+(b-a)*frac);
+    /* 커브가 넓게 벌어지는 고음쪽은 주변 빈 평균으로 채움 */
+    const span=Math.max(1,Math.round((usable-2)*1.7*Math.pow(t,0.7)/N));
+    if(span>1){
+      let sum=0,cnt=0;
+      for(let b2=lo;b2<lo+span&&b2<usable;b2++){sum+=freqData[b2];cnt++;}
+      v=sum/cnt;
+    }
+    return v/255;
   }
   /* 앵커별 기준선/높이 계산 */
   const cy=H*(params.ypos.val/100); // '중간' 모드 세밀조정용
