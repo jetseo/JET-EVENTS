@@ -202,7 +202,8 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 <div class="topbar ui">
   <h1>MUSIC STAGE</h1>
   <a href="index.html">← 추첨 게임</a>
-  <button class="hamburger" id="hamburger" aria-label="옵션 열기"><span></span><span></span><span></span></button>
+  <button class="hamburger" id="fsTopBtn" aria-label="전체화면" style="margin-left:auto;font-size:19px;color:var(--text);">⛶</button>
+  <button class="hamburger" id="hamburger" aria-label="옵션 열기" style="margin-left:0;"><span></span><span></span><span></span></button>
 </div>
 
 <button class="toggle-pl ui" id="togglePl">🎵 곡리스트</button>
@@ -725,13 +726,19 @@ document.querySelectorAll('#sleepRow button').forEach(b=>{
   };
 });
 
-/* 전체화면 */
-document.getElementById('fullscreenBtn').onclick=()=>{
+/* 전체화면 (상단 버튼 + 재생 탭 버튼 공용) */
+function toggleFullscreen(){
   if(document.fullscreenElement)document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(()=>{});
-};
+}
+document.getElementById('fullscreenBtn').onclick=toggleFullscreen;
+document.getElementById('fsTopBtn').onclick=toggleFullscreen;
 addEventListener('fullscreenchange',()=>{
-  document.getElementById('fullscreenBtn').classList.toggle('on',!!document.fullscreenElement);
+  const on=!!document.fullscreenElement;
+  document.getElementById('fullscreenBtn').classList.toggle('on',on);
+  const top=document.getElementById('fsTopBtn');
+  top.textContent=on?'⛶':'⛶';
+  top.style.color=on?'var(--teal)':'var(--text)';
 });
 
 /* 화면 꺼짐 방지 (Wake Lock) */
