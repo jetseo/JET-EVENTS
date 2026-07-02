@@ -90,21 +90,24 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 .hamburger.open span:nth-child(2){opacity:0;}
 .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
 
-/* ===== option rail ===== */
-.option-rail{position:fixed;top:66px;right:12px;z-index:20;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
-.opt-chip{background:rgba(20,23,31,.92);border:1px solid var(--line);color:var(--text);border-radius:999px;
-  padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer;transform:translateX(130%);opacity:0;
-  transition:transform .35s cubic-bezier(.2,.9,.3,1.2),opacity .3s;}
-.option-rail.show .opt-chip{transform:translateX(0);opacity:1;}
-.opt-chip.active{border-color:var(--teal);color:var(--teal);}
-
-/* ===== drawers ===== */
-.drawer{position:fixed;top:66px;right:170px;bottom:110px;width:300px;z-index:19;
-  background:rgba(20,23,31,.96);border:1px solid var(--line);border-radius:16px;padding:16px;
-  transform:translateX(30px);opacity:0;pointer-events:none;transition:.3s;overflow-y:auto;}
-.drawer.show{transform:translateX(0);opacity:1;pointer-events:auto;}
-.drawer h3{margin:0 0 12px;font-size:14px;color:var(--gold);}
-.drawer label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px;}
+/* ===== unified settings panel (삼선 → 탭 패널) ===== */
+.settings-panel{position:fixed;top:66px;right:12px;bottom:12px;width:min(360px,92vw);z-index:20;
+  background:rgba(20,23,31,.97);border:1px solid var(--line);border-radius:16px;
+  display:flex;flex-direction:column;overflow:hidden;
+  transform:translateX(110%);opacity:0;pointer-events:none;transition:transform .3s,opacity .3s;}
+.settings-panel.show{transform:translateX(0);opacity:1;pointer-events:auto;}
+.settings-tabs{display:flex;border-bottom:1px solid var(--line);overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;}
+.settings-tabs::-webkit-scrollbar{display:none;}
+.settings-tabs button{flex:1 0 auto;background:none;border:none;color:var(--dim);
+  padding:13px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
+  border-bottom:2px solid transparent;font-family:inherit;}
+.settings-tabs button.on{color:var(--teal);border-bottom-color:var(--teal);}
+.settings-body{flex:1;overflow-y:auto;padding:16px;}
+.settings-page{display:none;}
+.settings-page.on{display:block;}
+.settings-page h3{margin:0 0 12px;font-size:14px;color:var(--gold);}
+.settings-page label{display:block;font-size:12px;color:var(--dim);margin:12px 0 4px;}
 .eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .eq-grid button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;
   padding:8px 4px;font-size:11px;cursor:pointer;}
@@ -181,8 +184,7 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
   :root{--art-size:56vmin;}
   .topbar h1{font-size:15px;}
   .playlist{width:min(300px,84vw);bottom:130px;}
-  .drawer{right:12px;left:auto;width:min(320px,88vw);top:120px;bottom:130px;}
-  .option-rail{top:66px;}
+  .settings-panel{right:8px;left:8px;width:auto;bottom:8px;}
   .playerbar{gap:8px;padding:8px 10px;}
   .track-info .t{max-width:34vw;font-size:13px;}
   .vol-wrap{display:none;} /* 모바일은 기기 볼륨 사용 */
@@ -206,73 +208,106 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 <button class="toggle-pl ui" id="togglePl">🎵 곡리스트</button>
 
 <div class="playlist hidden" id="playlistPanel">
-  <h3>곡리스트 <button class="add" id="addSongBtn" title="곡 추가">+</button></h3>
+  <h3>곡리스트
+    <button class="add" id="addSongBtn" title="곡 추가">+</button>
+    <button class="add" id="closePlBtn" title="닫기" style="background:var(--panel2);color:var(--text);margin-left:6px;">✕</button>
+  </h3>
   <ul id="songList"></ul>
 </div>
 
-<div class="option-rail" id="optionRail">
-  <button class="opt-chip" data-panel="eq">🎚 이퀄라이저 (50)</button>
-  <button class="opt-chip" data-panel="art">💿 앨범아트</button>
-  <button class="opt-chip" data-panel="lyrics">📝 가사</button>
-  <button class="opt-chip" data-panel="style">🎛 이퀄라이저 조절</button>
-  <button class="opt-chip" data-panel="github">🔗 GitHub 연결</button>
-</div>
-
-<div class="drawer" id="drawer-eq">
-  <h3>이퀄라이저 효과 (50종)</h3>
-  <div class="eq-grid" id="eqGrid"></div>
-</div>
-
-<div class="drawer" id="drawer-art">
-  <h3>앨범아트 설정</h3>
-  <label>표시</label>
-  <div class="toggle-row">
-    <button id="artToggle">앨범아트 켜기/끄기</button>
+<!-- 통합 설정 패널: 삼선 버튼 하나 → 탭으로 전환 -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-tabs" id="settingsTabs">
+    <button data-page="eq" class="on">🎚 효과</button>
+    <button data-page="style">🎛 조절</button>
+    <button data-page="art">💿 아트</button>
+    <button data-page="lyrics">📝 가사</button>
+    <button data-page="play">▶ 재생</button>
+    <button data-page="github">🔗 GitHub</button>
   </div>
-  <label>모양</label>
-  <div class="toggle-row" id="artShapes">
-    <button data-shape="circle" class="on">⚪ 원형</button>
-    <button data-shape="lp">💿 LP형</button>
-    <button data-shape="square">⬛ 사각형</button>
-  </div>
-  <label>회전</label>
-  <div class="toggle-row">
-    <button id="spinToggle">🔄 회전 켜기/끄기</button>
-  </div>
-  <div id="artSliders"></div>
-</div>
+  <div class="settings-body">
 
-<div class="drawer" id="drawer-lyrics">
-  <h3>가사 설정</h3>
-  <div class="toggle-row">
-    <button id="lyricsToggle">가사 켜기/끄기</button>
-  </div>
-  <div id="lyricsSliders"></div>
-  <p style="font-size:11px;color:var(--dim);">가사는 곡 추가 시 입력할 수 있어요. 싱크 가사는 별도 페이지에서 제작 예정!</p>
-</div>
+    <div class="settings-page on" id="page-eq">
+      <h3>이퀄라이저 효과 (50종)</h3>
+      <div class="eq-grid" id="eqGrid"></div>
+    </div>
 
-<div class="drawer" id="drawer-style">
-  <h3>이퀄라이저 조절</h3>
-  <label>위치</label>
-  <div class="toggle-row" id="eqAnchorRow">
-    <button data-anchor="bottom" class="on">⬇ 하단</button>
-    <button data-anchor="middle">➖ 중간</button>
-    <button data-anchor="top">⬆ 상단</button>
-    <button data-anchor="full">⛶ 전체</button>
-  </div>
-  <div id="eqSliders"></div>
-  <p style="font-size:11px;color:var(--dim);">세로 위치 슬라이더는 '중간' 모드에서 세밀 조정용이에요.</p>
-</div>
+    <div class="settings-page" id="page-style">
+      <h3>이퀄라이저 조절</h3>
+      <label>위치</label>
+      <div class="toggle-row" id="eqAnchorRow">
+        <button data-anchor="bottom" class="on">⬇ 하단</button>
+        <button data-anchor="middle">➖ 중간</button>
+        <button data-anchor="top">⬆ 상단</button>
+        <button data-anchor="full">⛶ 전체</button>
+      </div>
+      <div id="eqSliders"></div>
+      <p style="font-size:11px;color:var(--dim);">세로 위치 슬라이더는 '중간' 모드에서 세밀 조정용이에요.</p>
+    </div>
 
-<div class="drawer" id="drawer-github">
-  <h3>GitHub 연결 (곡 업로드용)</h3>
-  <label>저장소명</label>
-  <input type="text" id="ghRepo" value="JET-EVENTS" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
-  <label>Personal Access Token</label>
-  <input type="password" id="ghPat" placeholder="ghp_..." style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
-  <p style="font-size:11px;color:var(--dim);">토큰은 이 브라우저 세션에만 머뭅니다.</p>
-  <button class="btn-save" id="ghConnectBtn" style="width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:700;">연결</button>
-  <div id="ghConnStatus" style="font-size:12px;color:var(--dim);margin-top:8px;"></div>
+    <div class="settings-page" id="page-art">
+      <h3>앨범아트 설정</h3>
+      <label>표시</label>
+      <div class="toggle-row">
+        <button id="artToggle">앨범아트 켜기/끄기</button>
+      </div>
+      <label>모양</label>
+      <div class="toggle-row" id="artShapes">
+        <button data-shape="circle" class="on">⚪ 원형</button>
+        <button data-shape="lp">💿 LP형</button>
+        <button data-shape="square">⬛ 사각형</button>
+      </div>
+      <label>회전</label>
+      <div class="toggle-row">
+        <button id="spinToggle">🔄 회전 켜기/끄기</button>
+      </div>
+      <div id="artSliders"></div>
+    </div>
+
+    <div class="settings-page" id="page-lyrics">
+      <h3>가사 설정</h3>
+      <div class="toggle-row">
+        <button id="lyricsToggle">가사 켜기/끄기</button>
+      </div>
+      <div id="lyricsSliders"></div>
+      <p style="font-size:11px;color:var(--dim);">가사는 곡 추가 시 입력할 수 있어요. 싱크 가사는 별도 페이지에서 제작 예정!</p>
+    </div>
+
+    <div class="settings-page" id="page-play">
+      <h3>재생 설정</h3>
+      <div id="playSliders"></div>
+      <label>슬립 타이머 (자동 정지)</label>
+      <div class="toggle-row" id="sleepRow">
+        <button data-min="0" class="on">끄기</button>
+        <button data-min="15">15분</button>
+        <button data-min="30">30분</button>
+        <button data-min="60">60분</button>
+      </div>
+      <div id="sleepStatus" style="font-size:12px;color:var(--dim);margin-top:6px;"></div>
+      <label>화면</label>
+      <div class="toggle-row">
+        <button id="fullscreenBtn">⛶ 전체화면 켜기/끄기</button>
+        <button id="wakeLockBtn">💡 화면 꺼짐 방지</button>
+      </div>
+      <label>설정</label>
+      <div class="toggle-row">
+        <button id="resetAllBtn">↺ 모든 설정 초기화</button>
+      </div>
+      <p style="font-size:11px;color:var(--dim);">설정은 이 기기 브라우저에 자동 저장돼요.</p>
+    </div>
+
+    <div class="settings-page" id="page-github">
+      <h3>GitHub 연결 (곡 업로드용)</h3>
+      <label>저장소명</label>
+      <input type="text" id="ghRepo" value="JET-EVENTS" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
+      <label>Personal Access Token</label>
+      <input type="password" id="ghPat" placeholder="ghp_..." style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;">
+      <p style="font-size:11px;color:var(--dim);">토큰은 이 브라우저 세션에만 머뭅니다.</p>
+      <button class="btn-save" id="ghConnectBtn" style="width:100%;padding:10px;border:none;border-radius:8px;cursor:pointer;font-weight:700;">연결</button>
+      <div id="ghConnStatus" style="font-size:12px;color:var(--dim);margin-top:8px;"></div>
+    </div>
+
+  </div>
 </div>
 
 <div class="modal" id="addModal">
@@ -424,6 +459,7 @@ function applyParam(key,v){
     const mp=document.getElementById('miniProgress');
     if(mp) mp.style.display=v===0?'none':'block';
   }
+  if(key==='speed'){ audio.playbackRate=v/100; }
 }
 /* 앨범아트: 크기 / 회전속도(RPM) / 세로 위치 */
 mkSlider('artSliders','artSize','크기',15,80,38,3,v=>v+'vmin');
@@ -569,9 +605,8 @@ draw();
 /* ================= UI 표시/숨김: 탭 토글 + 3초 자동 숨김 ================= */
 let hideTimer=null;
 function anyPanelOpen(){
-  return document.querySelector('.drawer.show')||document.querySelector('.modal.open')
-    ||!document.getElementById('playlistPanel').classList.contains('hidden')
-    ||document.getElementById('optionRail').classList.contains('show');
+  return document.querySelector('.settings-panel.show')||document.querySelector('.modal.open')
+    ||!document.getElementById('playlistPanel').classList.contains('hidden');
 }
 function showUI(){
   document.body.classList.remove('ui-hidden');
@@ -587,40 +622,38 @@ function hideUI(){
 }
 /* 배경(캔버스/앨범아트/가사) 탭: 숨김 상태면 표시(3초), 표시 상태면 즉시 숨김 */
 document.addEventListener('click',e=>{
-  if(e.target.closest('.ui,.drawer,.playlist,.modal,.option-rail'))return;
+  if(e.target.closest('.ui,.settings-panel,.playlist,.modal'))return;
   document.body.classList.contains('ui-hidden') ? showUI() : hideUI();
 });
 /* UI 조작 중에는 타이머 리셋 (사용 도중 사라지지 않게) */
 document.addEventListener('pointerdown',e=>{
-  if(e.target.closest('.ui,.drawer,.playlist,.option-rail'))showUI();
+  if(e.target.closest('.ui,.settings-panel,.playlist'))showUI();
 },{passive:true});
 addEventListener('keydown',showUI);
 showUI();
 
-/* ================= hamburger & drawers ================= */
+/* ================= hamburger & settings panel ================= */
 const hamburger=document.getElementById('hamburger');
-const rail=document.getElementById('optionRail');
+const settingsPanel=document.getElementById('settingsPanel');
 hamburger.onclick=()=>{
   hamburger.classList.toggle('open');
-  rail.classList.toggle('show');
-  if(!rail.classList.contains('show'))closeDrawers();
+  settingsPanel.classList.toggle('show');
 };
-function closeDrawers(){
-  document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('show'));
-  document.querySelectorAll('.opt-chip').forEach(c=>c.classList.remove('active'));
-}
-document.querySelectorAll('.opt-chip').forEach(chip=>{
-  chip.onclick=()=>{
-    const t=document.getElementById('drawer-'+chip.dataset.panel);
-    const was=t.classList.contains('show');
-    closeDrawers();
-    if(!was){t.classList.add('show');chip.classList.add('active');}
+document.querySelectorAll('#settingsTabs button').forEach(tab=>{
+  tab.onclick=()=>{
+    document.querySelectorAll('#settingsTabs button').forEach(t=>t.classList.remove('on'));
+    tab.classList.add('on');
+    document.querySelectorAll('.settings-page').forEach(p=>p.classList.remove('on'));
+    document.getElementById('page-'+tab.dataset.page).classList.add('on');
   };
 });
 
 /* ================= playlist ================= */
 document.getElementById('togglePl').onclick=()=>{
   document.getElementById('playlistPanel').classList.toggle('hidden');
+};
+document.getElementById('closePlBtn').onclick=()=>{
+  document.getElementById('playlistPanel').classList.add('hidden');
 };
 function renderPlaylist(){
   const ul=document.getElementById('songList');
@@ -636,11 +669,122 @@ function renderPlaylist(){
     if(s.coverUrl)mini.style.backgroundImage=`url(${s.coverUrl})`;
     const nm=document.createElement('span');nm.className='nm';
     nm.textContent=`${s.artist} - ${s.title}`;
-    li.append(mini,nm);
+    const del=document.createElement('button');
+    del.textContent='✕';
+    del.style.cssText='background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;flex-shrink:0;padding:4px;';
+    del.title='리스트에서 제거';
+    del.onclick=async ev=>{
+      ev.stopPropagation();
+      if(!confirm(`"${s.artist} - ${s.title}"를 리스트에서 뺄까요?\n(저장소의 음악 파일은 남아있고, 폴더에서 다시 추가할 수 있어요)`))return;
+      playlist.splice(i,1);
+      if(i===currentIdx){audio.pause();currentIdx=-1;}
+      else if(i<currentIdx)currentIdx--;
+      renderPlaylist();
+      if(gh.connected){try{await savePlaylistJson();}catch(e){}}
+    };
+    li.append(mini,nm,del);
     li.onclick=()=>playIndex(i);
     ul.appendChild(li);
   });
 }
+
+/* ================= 재생 탭 기능들 ================= */
+/* 재생 속도 (양쪽 화살표 슬라이더) */
+mkSlider('playSliders','speed','재생 속도',50,150,100,5,v=>v+'%');
+/* 크로스페이드 대신 간단 페이드인 */
+mkSlider('playSliders','fadeIn','페이드인',0,5,0,1,v=>v+'초');
+
+/* 슬립 타이머 */
+let sleepTimer=null;
+document.querySelectorAll('#sleepRow button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#sleepRow button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    clearTimeout(sleepTimer);
+    const min=+b.dataset.min;
+    const st=document.getElementById('sleepStatus');
+    if(min===0){st.textContent='';return;}
+    st.textContent=`⏰ ${min}분 후 재생이 멈춰요`;
+    sleepTimer=setTimeout(()=>{
+      audio.pause();
+      st.textContent='💤 슬립 타이머로 정지됨';
+      document.querySelectorAll('#sleepRow button').forEach(x=>x.classList.remove('on'));
+      document.querySelector('#sleepRow button[data-min="0"]').classList.add('on');
+    },min*60*1000);
+  };
+});
+
+/* 전체화면 */
+document.getElementById('fullscreenBtn').onclick=()=>{
+  if(document.fullscreenElement)document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(()=>{});
+};
+addEventListener('fullscreenchange',()=>{
+  document.getElementById('fullscreenBtn').classList.toggle('on',!!document.fullscreenElement);
+});
+
+/* 화면 꺼짐 방지 (Wake Lock) */
+let wakeLock=null;
+document.getElementById('wakeLockBtn').onclick=async()=>{
+  const btn=document.getElementById('wakeLockBtn');
+  if(wakeLock){wakeLock.release();wakeLock=null;btn.classList.remove('on');return;}
+  try{
+    wakeLock=await navigator.wakeLock.request('screen');
+    btn.classList.add('on');
+    wakeLock.addEventListener('release',()=>{wakeLock=null;btn.classList.remove('on');});
+  }catch(e){alert('이 브라우저는 화면 꺼짐 방지를 지원하지 않아요.');}
+};
+
+/* 설정 자동 저장/복원 (이 기기 브라우저에) */
+const SETTINGS_KEY='jet-music-settings';
+function saveSettings(){
+  try{
+    const data={eqIdx,eqAnchor,artOn,spinOn,lyricsOn,
+      artShape:(document.querySelector('#artShapes button.on')||{}).dataset?.shape||'circle',
+      params:Object.fromEntries(Object.entries(params).map(([k,v])=>[k,v.val]))};
+    localStorage.setItem(SETTINGS_KEY,JSON.stringify(data));
+  }catch(e){}
+}
+function loadSettings(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');
+    if(!d)return;
+    if(typeof d.eqIdx==='number'&&EQ_PRESETS[d.eqIdx]){
+      eqIdx=d.eqIdx;
+      grid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===eqIdx));
+    }
+    if(d.eqAnchor){
+      eqAnchor=d.eqAnchor;
+      document.querySelectorAll('#eqAnchorRow button').forEach(b=>b.classList.toggle('on',b.dataset.anchor===eqAnchor));
+    }
+    if(d.artShape){
+      document.querySelectorAll('#artShapes button').forEach(b=>b.classList.toggle('on',b.dataset.shape===d.artShape));
+      art.className=art.className.replace(/shape-\w+/,'shape-'+d.artShape);
+    }
+    if(typeof d.artOn==='boolean')artOn=d.artOn;
+    if(typeof d.spinOn==='boolean')spinOn=d.spinOn;
+    if(typeof d.lyricsOn==='boolean')lyricsOn=d.lyricsOn;
+    refreshArtBtns();
+    if(d.params)Object.entries(d.params).forEach(([k,v])=>{
+      if(params[k]){
+        params[k].val=v;
+        const s=document.getElementById('s-'+k),vs=document.getElementById('v-'+k);
+        if(s)s.value=v;
+        if(vs)vs.textContent=vs.textContent.replace(/^[\d.]+/,v); // 근사 표기
+        applyParam(k,v);
+      }
+    });
+  }catch(e){}
+}
+setInterval(saveSettings,3000);
+loadSettings();
+
+/* 모든 설정 초기화 */
+document.getElementById('resetAllBtn').onclick=()=>{
+  if(!confirm('모든 설정을 기본값으로 되돌릴까요?'))return;
+  localStorage.removeItem(SETTINGS_KEY);
+  location.reload();
+};
 
 /* ================= player controls ================= */
 const playBtn=document.getElementById('playBtn');
@@ -653,7 +797,21 @@ function playIndex(i){
   document.getElementById('trackArtist').textContent=s.artist;
   document.getElementById('jacket').style.backgroundImage=s.coverUrl?`url(${s.coverUrl})`:'none';
   initAudio();audioCtx.resume();
-  audio.play();
+  audio.playbackRate=params.speed?params.speed.val/100:1;
+  const fadeSec=params.fadeIn?params.fadeIn.val:0;
+  if(fadeSec>0){
+    audio.volume=0;
+    audio.play();
+    const target=document.getElementById('vol').value/100;
+    const steps=20,step=target/steps;
+    let n=0;
+    const fi=setInterval(()=>{
+      n++;audio.volume=Math.min(target,step*n);
+      if(n>=steps)clearInterval(fi);
+    },fadeSec*1000/steps);
+  }else{
+    audio.play();
+  }
   renderPlaylist();updateArt();updateLyrics();
   if('mediaSession'in navigator){
     navigator.mediaSession.metadata=new MediaMetadata({title:s.title,artist:s.artist,
