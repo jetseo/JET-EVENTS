@@ -208,7 +208,9 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
 
 <button class="toggle-pl ui" id="togglePl">🎵 곡리스트</button>
 
-<div class="playlist hidden" id="playlistPanel">
+<div id="titleBox" class="ui" style="position:fixed;left:50%;top:20%;z-index:2;transform:translateX(-50%);text-align:center;color:#fff;font-size:28px;font-weight:700;text-shadow:0 2px 12px rgba(0,0,0,.9);display:none;pointer-events:none;">JET-MUSIC</div>
+
+<div id="infoBox" class="ui" style="position:fixed;left:50%;bottom:20%;z-index:2;transform:translateX(-50%);text-align:center;color:#fff;font-size:14px;text-shadow:0 2px 12px rgba(0,0,0,.9);display:none;pointer-events:none;"></div>
   <h3>곡리스트
     <button class="add" id="addSongBtn" title="곡 추가">+</button>
     <button class="add" id="closePlBtn" title="닫기" style="background:var(--panel2);color:var(--text);margin-left:6px;">✕</button>
@@ -224,6 +226,8 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
     <button data-page="art">💿 아트</button>
     <button data-page="lyrics">📝 가사</button>
     <button data-page="play">▶ 재생</button>
+    <button data-page="title">📌 타이틀</button>
+    <button data-page="info">ℹ 곡정보</button>
     <button data-page="bg">🌈 배경 효과</button>
     <button data-page="github">🔗 GitHub</button>
   </div>
@@ -272,6 +276,67 @@ body.ui-hidden .ui{opacity:0;visibility:hidden;pointer-events:none;}
         <button id="spinToggle">🔄 회전 켜기/끄기</button>
       </div>
       <div id="artSliders"></div>
+    </div>
+
+    <div class="settings-page" id="page-title">
+      <h3>타이틀 설정</h3>
+      <div class="toggle-row">
+        <button id="titleToggle">타이틀 표시</button>
+      </div>
+      <label>텍스트</label>
+      <input type="text" id="titleText" value="JET-MUSIC" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;margin-bottom:10px;">
+      <label>위치 (상하)</label>
+      <div class="arrow-slider">
+        <button data-t="titleY" data-d="-5">◀</button>
+        <input type="range" id="s-titleY" min="10" max="40" value="20" step="2">
+        <button data-t="titleY" data-d="5">▶</button>
+        <button class="reset" data-r="titleY">초기화</button>
+      </div>
+      <span class="slider-val" id="v-titleY">20%</span>
+      <label>색상</label>
+      <div class="toggle-row" id="titleColors" style="flex-wrap:wrap;"></div>
+      <label>폰트</label>
+      <div class="toggle-row" id="titleFonts" style="flex-wrap:wrap;"></div>
+    </div>
+
+    <div class="settings-page" id="page-title">
+      <h3>타이틀 설정</h3>
+      <div class="toggle-row">
+        <button id="titleToggle">타이틀 표시</button>
+      </div>
+      <label>텍스트</label>
+      <input type="text" id="titleText" value="JET-MUSIC" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font-size:13px;margin-bottom:10px;">
+      <label>위치 (상하)</label>
+      <div class="arrow-slider">
+        <button data-t="titleY" data-d="-5">◀</button>
+        <input type="range" id="s-titleY" min="10" max="40" value="20" step="2">
+        <button data-t="titleY" data-d="5">▶</button>
+        <button class="reset" data-r="titleY">초기화</button>
+      </div>
+      <span class="slider-val" id="v-titleY">20%</span>
+      <label>색상 (10종)</label>
+      <div class="toggle-row" id="titleColors" style="flex-wrap:wrap;gap:4px;"></div>
+      <label>폰트 (10종)</label>
+      <div class="toggle-row" id="titleFonts" style="flex-wrap:wrap;gap:4px;"></div>
+    </div>
+
+    <div class="settings-page" id="page-info">
+      <h3>곡정보 설정</h3>
+      <div class="toggle-row">
+        <button id="infoToggle">곡정보 표시 (가수/곡명)</button>
+      </div>
+      <label>위치 (상하)</label>
+      <div class="arrow-slider">
+        <button data-t="infoY" data-d="-5">◀</button>
+        <input type="range" id="s-infoY" min="60" max="90" value="75" step="2">
+        <button data-t="infoY" data-d="5">▶</button>
+        <button class="reset" data-r="infoY">초기화</button>
+      </div>
+      <span class="slider-val" id="v-infoY">75%</span>
+      <label>색상 (10종)</label>
+      <div class="toggle-row" id="infoColors" style="flex-wrap:wrap;gap:4px;"></div>
+      <label>폰트 (10종)</label>
+      <div class="toggle-row" id="infoFonts" style="flex-wrap:wrap;gap:4px;"></div>
     </div>
 
     <div class="settings-page" id="page-bg">
@@ -463,6 +528,13 @@ LYR_STYLES.forEach(st=>LYR_COLORS2.forEach(co=>LYR_PRESETS.push({style:st,label:
 while(LYR_PRESETS.length<50) LYR_PRESETS.push({style:'normal',label:`스타일${LYR_PRESETS.length+1}`,col:'#fff'});
 
 let lyrEffectIdx=0;
+
+/* ================= 타이틀 / 곡정보 설정 ================= */
+let titleOn=true, infoOn=true;
+const TITLE_COLORS=['#ffffff','#FFE29A','#FF2E63','#2DD4BF','#7C83FD','#FF8A5B','#C3C6FF','#9DF3E8','#FFC53D','#FF7AA0'];
+const TITLE_FONTS=['serif','sans-serif','monospace','cursive','Arial','Georgia','Times New Roman','Courier New','Comic Sans MS','Impact'];
+let titleColorIdx=0, titleFontIdx=0, titleY=20;
+let infoColorIdx=0, infoFontIdx=0, infoY=75;
 const SHAPES=[{key:'bars',name:'바'},{key:'mirror',name:'미러바'},{key:'circle',name:'서클'},{key:'wave',name:'웨이브'},{key:'dots',name:'파티클'}];
 const PALETTES=[
   {name:'네온핑크',c:['#FF2E63','#ff7aa0']},{name:'골드',c:['#FFC53D','#ffe29a']},
@@ -855,6 +927,8 @@ document.getElementById('patSkipBtn').onclick=()=>{
 async function saveSettingsToIssues(){
   if(!gh.connected)return;
   const settingsData={eqIdx,eqAnchor,artOn,spinOn,lyricsOn,bgIdx,bgOn,lyrEffectIdx,
+    titleOn,titleColorIdx,titleFontIdx,titleY,
+    infoOn,infoColorIdx,infoFontIdx,infoY,
     artShape:(document.querySelector('#artShapes button.on')||{}).dataset?.shape||'circle',
     params:Object.fromEntries(Object.entries(params).map(([k,v])=>[k,v.val]))};
   try{
@@ -890,15 +964,18 @@ async function loadSettingsFromIssues(){
     const match=issue.body.match(/```json\n([\s\S]*?)\n```/);
     if(!match)return;
     const d=JSON.parse(match[1]);
-    // 기존 loadSettings와 동일한 로직
     if(typeof d.eqIdx==='number'&&EQ_PRESETS[d.eqIdx]){
       eqIdx=d.eqIdx;
       grid.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('sel',i===eqIdx));
     }
-    if(d.eqAnchor){
-      eqAnchor=d.eqAnchor;
-      document.querySelectorAll('#eqAnchorRow button').forEach(b=>b.classList.toggle('on',b.dataset.anchor===eqAnchor));
-    }
+    if(typeof d.titleOn==='boolean'){titleOn=d.titleOn;document.getElementById('titleToggle').classList.toggle('on',titleOn);}
+    if(typeof d.titleColorIdx==='number'){titleColorIdx=d.titleColorIdx;}
+    if(typeof d.titleFontIdx==='number'){titleFontIdx=d.titleFontIdx;}
+    if(typeof d.titleY==='number'){titleY=d.titleY;document.getElementById('s-titleY').value=titleY;document.getElementById('v-titleY').textContent=titleY+'%';}
+    if(typeof d.infoOn==='boolean'){infoOn=d.infoOn;document.getElementById('infoToggle').classList.toggle('on',infoOn);}
+    if(typeof d.infoColorIdx==='number'){infoColorIdx=d.infoColorIdx;}
+    if(typeof d.infoFontIdx==='number'){infoFontIdx=d.infoFontIdx;}
+    if(typeof d.infoY==='number'){infoY=d.infoY;document.getElementById('s-infoY').value=infoY;document.getElementById('v-infoY').textContent=infoY+'%';}
     if(d.params)Object.entries(d.params).forEach(([k,v])=>{
       if(params[k]){
         params[k].val=v;
@@ -908,6 +985,7 @@ async function loadSettingsFromIssues(){
         applyParam(k,v);
       }
     });
+    updateTitle();updateInfo();
   }catch(e){console.warn('settings load failed',e);}
 }
 
@@ -1415,6 +1493,34 @@ async function loadPlaylistJson(){
   }catch(e){}
 })();
 renderPlaylist();
-</script>
+
+/* ================= 타이틀/곡정보 ================= */
+function updateTitle(){
+  const tb=document.getElementById('titleBox');
+  if(!titleOn){tb.style.display='none';return;}
+  tb.textContent=document.getElementById('titleText').value||'JET-MUSIC';
+  tb.style.top=titleY+'%';tb.style.color=TITLE_COLORS[titleColorIdx];
+  tb.style.fontFamily=TITLE_FONTS[titleFontIdx];tb.style.display='block';
+}
+function updateInfo(){
+  const ib=document.getElementById('infoBox');
+  if(!infoOn||currentIdx<0){ib.style.display='none';return;}
+  const s=playlist[currentIdx];
+  ib.textContent=`${s.artist} - ${s.title}`;ib.style.bottom=(100-infoY)+'%';
+  ib.style.color=TITLE_COLORS[infoColorIdx];ib.style.fontFamily=TITLE_FONTS[infoFontIdx];ib.style.display='block';
+}
+document.getElementById('titleToggle').onclick=()=>{titleOn=!titleOn;updateTitle();};
+document.getElementById('titleText').oninput=updateTitle;
+document.getElementById('s-titleY').oninput=e=>{titleY=+e.target.value;document.getElementById('v-titleY').textContent=titleY+'%';updateTitle();};
+document.querySelector('[data-r="titleY"]').onclick=()=>{titleY=20;document.getElementById('s-titleY').value=20;document.getElementById('v-titleY').textContent='20%';updateTitle();};
+document.getElementById('infoToggle').onclick=()=>{infoOn=!infoOn;updateInfo();};
+document.getElementById('s-infoY').oninput=e=>{infoY=+e.target.value;document.getElementById('v-infoY').textContent=infoY+'%';updateInfo();};
+document.querySelector('[data-r="infoY"]').onclick=()=>{infoY=75;document.getElementById('s-infoY').value=75;document.getElementById('v-infoY').textContent='75%';updateInfo();};
+TITLE_COLORS.forEach((c,i)=>{const b=document.createElement('button');b.style.cssText=`width:22px;height:22px;background:${c};border:${i?'1px solid var(--line)':'2px solid #fff'};border-radius:3px;cursor:pointer;`;b.onclick=()=>{titleColorIdx=i;document.getElementById('titleColors').querySelectorAll('button').forEach(x=>x.style.borderColor='var(--line)');b.style.borderColor='#fff';updateTitle();};document.getElementById('titleColors').appendChild(b);});
+TITLE_FONTS.forEach((f,i)=>{const b=document.createElement('button');b.textContent=f.slice(0,2);b.style.cssText=`font-family:${f};font-size:9px;padding:3px 5px;background:${!i?'var(--teal)':'var(--panel2)'};color:var(--text);border:1px solid var(--line);border-radius:2px;cursor:pointer;`;b.onclick=()=>{titleFontIdx=i;document.getElementById('titleFonts').querySelectorAll('button').forEach(x=>x.style.background='var(--panel2)');b.style.background='var(--teal)';updateTitle();};document.getElementById('titleFonts').appendChild(b);});
+TITLE_COLORS.forEach((c,i)=>{const b=document.createElement('button');b.style.cssText=`width:22px;height:22px;background:${c};border:${i?'1px solid var(--line)':'2px solid #fff'};border-radius:3px;cursor:pointer;`;b.onclick=()=>{infoColorIdx=i;document.getElementById('infoColors').querySelectorAll('button').forEach(x=>x.style.borderColor='var(--line)');b.style.borderColor='#fff';updateInfo();};document.getElementById('infoColors').appendChild(b);});
+TITLE_FONTS.forEach((f,i)=>{const b=document.createElement('button');b.textContent=f.slice(0,2);b.style.cssText=`font-family:${f};font-size:9px;padding:3px 5px;background:${!i?'var(--teal)':'var(--panel2)'};color:var(--text);border:1px solid var(--line);border-radius:2px;cursor:pointer;`;b.onclick=()=>{infoFontIdx=i;document.getElementById('infoFonts').querySelectorAll('button').forEach(x=>x.style.background='var(--panel2)');b.style.background='var(--teal)';updateInfo();};document.getElementById('infoFonts').appendChild(b);});
+const origPI=window.playIndex;window.playIndex=function(i){origPI(i);updateInfo();};
+updateTitle();updateInfo();
 </body>
 </html>
